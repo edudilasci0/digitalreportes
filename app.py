@@ -32,7 +32,8 @@ with st.expander("Instrucciones", expanded=False):
     Debe cargar los archivos para la marca específica que desea analizar:
     1. **matriculados.xlsx**: Contiene la información de los matriculados de la marca seleccionada
     2. **leads_activos.xlsx**: Contiene la información de los leads activos de la marca seleccionada
-    3. **planificacion.xlsx**: Contiene la planificación mensual, inversión acumulada y calendario de convocatorias
+    3. **planificacion.xlsx**: (Opcional) Contiene la planificación mensual, inversión acumulada y calendario de convocatorias.
+       También puede introducir estos datos manualmente en la interfaz.
     """)
 
 # Selector de marca
@@ -50,7 +51,7 @@ with col2:
     leads_file = st.file_uploader(f"Subir archivo de leads activos - {selected_marca}", type=["xlsx"])
     
 with col3:
-    planificacion_file = st.file_uploader(f"Subir archivo de planificación - {selected_marca}", type=["xlsx"])
+    planificacion_file = st.file_uploader(f"Subir archivo de planificación - {selected_marca} (opcional)", type=["xlsx"])
 
 # Configuración adicional
 st.header("Configuración del Reporte")
@@ -62,6 +63,127 @@ objetivo_matriculas = st.number_input(
     value=100, 
     help="Establece el objetivo de matrículas para esta marca y período"
 )
+
+# Opción para ingresar datos de planificación manualmente
+usar_planificacion_manual = not planificacion_file and st.checkbox("Ingresar datos de planificación manualmente", value=not planificacion_file)
+
+# Datos de planificación manual
+df_plan_mensual_manual = None
+df_inversion_manual = None 
+df_calendario_manual = None
+
+if usar_planificacion_manual:
+    st.subheader("Datos de Planificación Manual")
+    
+    with st.expander("Plan Mensual", expanded=True):
+        st.write("Introduzca la planificación mensual para la marca seleccionada")
+        
+        # Definir canales comunes
+        canales_default = ["Facebook", "Google", "Instagram", "TikTok", "Email Marketing"]
+        
+        # Crear formulario para plan mensual
+        plan_data = []
+        
+        for i, canal in enumerate(canales_default):
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                canal_nombre = st.text_input(f"Canal #{i+1}", value=canal)
+            with col2:
+                presupuesto = st.number_input(f"Presupuesto {canal}", min_value=0, value=1000*(i+1))
+            with col3:
+                cpl = st.number_input(f"CPL {canal}", min_value=0.0, value=float(5+i*2))
+            with col4:
+                leads_estimados = presupuesto / max(0.1, cpl)
+                st.text(f"Leads estimados: {int(leads_estimados)}")
+            
+            plan_data.append({
+                "Marca": selected_marca,
+                "Canal": canal_nombre,
+                "Presupuesto total mes": presupuesto,
+                "CPL estimado": cpl,
+                "Leads estimados": int(leads_estimados)
+            })
+        
+        # Crear DataFrame
+        df_plan_mensual_manual = pd.DataFrame(plan_data)
+        
+        # Mostrar vista previa
+        st.write("Vista previa del plan mensual:")
+        st.dataframe(df_plan_mensual_manual)
+    
+    with st.expander("Inversión Acumulada", expanded=True):
+        st.write("Introduzca la inversión acumulada por canal")
+        
+        inversion_data = []
+        
+        # Obtener canales del plan mensual
+        canales = df_plan_mensual_manual["Canal"].unique().tolist()
+        
+        for i, canal in enumerate(canales):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.text(f"Canal: {canal}")
+            with col2:
+                inversion = st.number_input(f"Inversión {canal}", min_value=0, value=int(500*(i+1)))
+            with col3:
+                cpl_actual = st.number_input(f"CPL actual {canal}", min_value=0.0, value=float(4+i*1.5))
+            
+            inversion_data.append({
+                "Fecha": datetime.now(),
+                "Marca": selected_marca,
+                "Canal": canal,
+                "Inversión acumulada": inversion,
+                "CPL estimado": cpl_actual
+            })
+        
+        # Crear DataFrame
+        df_inversion_manual = pd.DataFrame(inversion_data)
+        
+        # Mostrar vista previa
+        st.write("Vista previa de inversión acumulada:")
+        st.dataframe(df_inversion_manual)
+    
+    with st.expander("Calendario de Convocatoria", expanded=True):
+        st.write("Introduzca fechas de convocatoria para los diferentes programas")
+        
+        # Para GRADO y UNISUD, usar las fechas ya configuradas
+        if selected_marca in ["GRADO", "UNISUD"]:
+            st.info(f"Para {selected_marca}, se utilizarán las fechas configuradas en 'Calendario de Convocatoria'")
+            # El calendario se creará más adelante con las fechas configuradas
+            
+            df_calendario_manual = None
+        else:
+            # Para otras marcas, permitir configurar convocatorias específicas
+            calendario_data = []
+            
+            # Número de programas a configurar
+            num_programas = st.number_input("Número de programas a configurar", min_value=1, max_value=10, value=3)
+            
+            for i in range(num_programas):
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    programa = st.text_input(f"Programa #{i+1}", value=f"Programa {i+1}")
+                with col2:
+                    fecha_inicio_prog = st.date_input(f"Inicio {programa}", value=datetime.now() - timedelta(days=15))
+                with col3:
+                    fecha_fin_prog = st.date_input(f"Fin {programa}", value=datetime.now() + timedelta(days=45))
+                with col4:
+                    tipo = st.selectbox(f"Tipo {programa}", options=["Convocatoria", "Cohorte"], index=0)
+                
+                calendario_data.append({
+                    "Marca": selected_marca,
+                    "Programa": programa,
+                    "Fecha inicio": datetime.combine(fecha_inicio_prog, datetime.min.time()),
+                    "Fecha fin": datetime.combine(fecha_fin_prog, datetime.min.time()),
+                    "Tipo": tipo
+                })
+            
+            # Crear DataFrame
+            df_calendario_manual = pd.DataFrame(calendario_data)
+            
+            # Mostrar vista previa
+            st.write("Vista previa de calendario:")
+            st.dataframe(df_calendario_manual)
 
 # Sólo para GRADO y UNISUD: configurar fechas de convocatoria
 if selected_marca in ["GRADO", "UNISUD"]:
@@ -111,7 +233,7 @@ else:
     st.info(f"La marca {selected_marca} no se organiza por convocatorias con fechas fijas.")
 
 # Generación de reportes
-if st.button("Generar Reporte") and matriculados_file and leads_file and planificacion_file:
+if st.button("Generar Reporte") and matriculados_file and leads_file and (planificacion_file or usar_planificacion_manual):
     # Mostrar indicador de progreso
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -129,7 +251,28 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         progress_bar.progress(50)
         status_text.text("Procesando planificación...")
         
-        df_plan_mensual, df_inversion, df_calendario = process_planificacion(planificacion_file)
+        # Usar datos de planificación del archivo o de la entrada manual
+        if planificacion_file:
+            df_plan_mensual, df_inversion, df_calendario = process_planificacion(planificacion_file)
+        else:
+            # Usar datos ingresados manualmente
+            df_plan_mensual = df_plan_mensual_manual
+            df_inversion = df_inversion_manual
+            
+            # Para GRADO y UNISUD, crear calendario a partir de las fechas configuradas
+            if selected_marca in ["GRADO", "UNISUD"] and fecha_inicio and fecha_fin:
+                calendario_custom = {
+                    'Marca': [selected_marca],
+                    'Programa': ['Todos los programas'],
+                    'Fecha inicio': [datetime.combine(fecha_inicio, datetime.min.time())],
+                    'Fecha fin': [datetime.combine(fecha_fin, datetime.min.time())],
+                    'Tipo': ['Convocatoria']
+                }
+                df_calendario = pd.DataFrame(calendario_custom)
+            else:
+                # Usar calendario manual para otras marcas
+                df_calendario = df_calendario_manual
+        
         progress_bar.progress(70)
         status_text.text("Calculando métricas...")
         
