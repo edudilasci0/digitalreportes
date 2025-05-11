@@ -330,9 +330,10 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and (planif
                    text=f"{metrics['matriculas_acumuladas']} de {metrics['objetivo_matriculas']} ({pct_objetivo*100:.1f}%)")
         
         # Mostrar otras métricas
-        cols = st.columns(3)
+        cols = st.columns(4)
         cols[0].metric("Leads Acumulados", f"{metrics['leads_acumulados']}")
         cols[1].metric("Tasa de Conversión", f"{metrics['tasa_conversion']:.2f}%")
+        cols[2].metric("Programas Detectados", f"{metrics.get('programas_procesados', 0)}")
         
         # Proyección de cumplimiento
         pct_cumplimiento = projections['pct_cumplimiento_proyectado'] / 100
@@ -344,7 +345,7 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and (planif
         else:
             cumplimiento_color = "inverse"  # Rojo
             
-        cols[2].metric(
+        cols[3].metric(
             "Proyección de Cumplimiento", 
             f"{projections['pct_cumplimiento_proyectado']:.1f}%",
             delta_color=cumplimiento_color

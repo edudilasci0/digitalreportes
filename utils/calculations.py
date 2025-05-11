@@ -74,9 +74,14 @@ def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, ma
             if not fecha_inicio_df.empty:
                 fecha_inicio_marca = fecha_inicio_df.iloc[0]
     
+    # Inicializar contador para programas procesados
+    programas_procesados = set()
+    
     for _, matricula in matriculas_marca.iterrows():
         programa = matricula['Programa']
         fecha_ingreso = matricula['Fecha ingreso']
+        
+        programas_procesados.add(programa)
         
         # Usar la fecha de inicio de la marca para todos los programas
         if fecha_inicio_marca is not None and pd.notna(fecha_ingreso):
@@ -97,6 +102,9 @@ def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, ma
                         matriculas_nuevas += 1
                     else:
                         matriculas_remarketing += 1
+            else:
+                # Si no hay fecha específica, consideramos como lead nuevo (es lo más común)
+                matriculas_nuevas += 1
     
     total_matriculas = matriculas_nuevas + matriculas_remarketing
     
@@ -106,6 +114,9 @@ def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, ma
     else:
         metrics['pct_matriculas_nuevos'] = 0
         metrics['pct_matriculas_remarketing'] = 0
+    
+    # Agregar información sobre programas únicos
+    metrics['programas_procesados'] = len(programas_procesados)
     
     # 7. Inversión acumulada
     metrics['inversion_acumulada'] = df_inversion['Inversión acumulada'].sum()
@@ -215,17 +226,20 @@ def analyze_programs(df_matriculados, df_leads, df_calendario):
     """Analizar programas para identificar los mejores y con oportunidades"""
     result = {}
     
-    # Validar que tengamos datos suficientes
-    if df_calendario.empty:
-        # Si no hay datos, crear DataFrames vacíos para evitar errores
-        empty_df = pd.DataFrame(columns=['Programa', 'Leads', 'Matrículas', 'Tasa Conversión (%)', 'Clasificación'])
-        result['tabla_completa'] = empty_df
-        result['top_matriculas'] = empty_df
-        result['menor_conversion'] = empty_df
-        return result
+    # Crear un conjunto de todos los programas únicos presentes en los datos
+    # en lugar de usar solo el calendario
+    programas_marca = set(
+        list(df_matriculados['Programa'].unique()) + 
+        list(df_leads['Programa'].unique())
+    )
     
-    # Filtrar programas por la marca seleccionada (los DataFrames ya vienen filtrados)
-    programas_marca = df_calendario['Programa'].unique()
+    # Si tenemos el calendario, podemos agregar esos programas también
+    if not df_calendario.empty:
+        for programa in df_calendario['Programa'].unique():
+            programas_marca.add(programa)
+    
+    # Convertir a lista para facilidad de uso
+    programas_marca = list(programas_marca)
     
     # Crear DataFrame para análisis de programas
     programas = []
@@ -233,6 +247,10 @@ def analyze_programs(df_matriculados, df_leads, df_calendario):
     for programa in programas_marca:
         leads = df_leads[df_leads['Programa'] == programa].shape[0]
         matriculas = df_matriculados[df_matriculados['Programa'] == programa].shape[0]
+        
+        # Evitar programas que no tienen datos (0 leads y 0 matrículas)
+        if leads == 0 and matriculas == 0:
+            continue
         
         tasa_conversion = 0
         if leads > 0:
