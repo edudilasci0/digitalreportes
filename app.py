@@ -11,15 +11,15 @@ from utils.report_generator import generate_excel, generate_pdf, generate_pptx
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Digital Reportes - Marketing Estratégico",
+    page_title="Reporte Status Semanal",
     page_icon="📊",
     layout="wide"
 )
 
 # Título y descripción
-st.title("Reportador Estratégico de Marketing")
+st.title("Reporte Status Semanal")
 st.markdown("""
-Esta aplicación genera reportes estratégicos por marca y programa educativo,
+Esta aplicación genera reportes estratégicos semanales por marca y programa educativo,
 adaptados a los diferentes modelos como GRADO y POSGRADO.
 """)
 
@@ -95,7 +95,13 @@ if selected_marca in ["GRADO", "UNISUD"]:
         
         if duracion_total > 0:
             pct_transcurrido = min(100, max(0, (transcurrido / duracion_total) * 100))
-            st.progress(pct_transcurrido / 100, text=f"Tiempo transcurrido: {pct_transcurrido:.1f}%")
+            
+            # Barra de progreso más destacada
+            st.markdown(f"### Tiempo transcurrido: {pct_transcurrido:.1f}%")
+            st.progress(pct_transcurrido / 100)
+            
+            # Agregar contexto adicional
+            st.write(f"Convocatoria: día {transcurrido} de {duracion_total} ({(fecha_fin - today.date()).days} días restantes)")
         else:
             st.error("La fecha de fin debe ser posterior a la fecha de inicio.")
 else:
@@ -163,27 +169,56 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         status_text.text("Generando visualizaciones...")
         
         # Visualización del reporte
-        st.header(f"Reporte Estratégico - {selected_marca}")
+        st.header(f"Reporte Status Semanal - {selected_marca}")
         
         # 1. Estado actual
         st.subheader("Estado Actual")
-        cols = st.columns(4)
         
-        # Solo mostrar tiempo transcurrido para marcas con convocatorias
-        if selected_marca in ["GRADO", "UNISUD"]:
-            cols[0].metric("Tiempo Transcurrido", f"{metrics['tiempo_transcurrido']:.1f}%")
+        # Agregar barras de progreso para las métricas principales
+        if selected_marca in ["GRADO", "UNISUD"] and metrics['tiempo_transcurrido'] is not None:
+            st.markdown("##### Tiempo Transcurrido")
+            st.progress(min(1.0, metrics['tiempo_transcurrido'] / 100), 
+                        text=f"{metrics['tiempo_transcurrido']:.1f}%")
+        
+        # Mostrar progreso de matrículas respecto al objetivo con barra
+        pct_objetivo = min(1.0, metrics['matriculas_acumuladas'] / max(1, metrics['objetivo_matriculas']))
+        st.markdown("##### Matrículas vs Objetivo")
+        st.progress(pct_objetivo, 
+                   text=f"{metrics['matriculas_acumuladas']} de {metrics['objetivo_matriculas']} ({pct_objetivo*100:.1f}%)")
+        
+        # Mostrar otras métricas
+        cols = st.columns(3)
+        cols[0].metric("Leads Acumulados", f"{metrics['leads_acumulados']}")
+        cols[1].metric("Tasa de Conversión", f"{metrics['tasa_conversion']:.2f}%")
+        
+        # Proyección de cumplimiento
+        pct_cumplimiento = projections['pct_cumplimiento_proyectado'] / 100
+        cumplimiento_color = "normal"
+        if pct_cumplimiento >= 1.0:
+            cumplimiento_color = "off"  # Verde
+        elif pct_cumplimiento >= 0.8:
+            cumplimiento_color = "normal"  # Amarillo
         else:
-            cols[0].info("No aplicable para esta marca")
+            cumplimiento_color = "inverse"  # Rojo
             
-        cols[1].metric("Leads Acumulados", f"{metrics['leads_acumulados']}")
-        cols[2].metric("Matrículas vs Objetivo", f"{metrics['matriculas_acumuladas']}/{metrics['objetivo_matriculas']}")
-        cols[3].metric("Tasa de Conversión", f"{metrics['tasa_conversion']:.2f}%")
+        cols[2].metric(
+            "Proyección de Cumplimiento", 
+            f"{projections['pct_cumplimiento_proyectado']:.1f}%",
+            delta_color=cumplimiento_color
+        )
         
         # 2. Composición de resultados
         st.subheader("Composición de Resultados")
-        cols = st.columns(2)
-        cols[0].metric("% Matrículas Leads Nuevos", f"{metrics['pct_matriculas_nuevos']:.1f}%")
-        cols[1].metric("% Matrículas Remarketing", f"{metrics['pct_matriculas_remarketing']:.1f}%")
+        
+        # Mostrar barras para composición de matrículas
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("##### Matrículas por tipo de lead")
+            st.progress(metrics['pct_matriculas_nuevos'] / 100, 
+                       text=f"Leads Nuevos: {metrics['pct_matriculas_nuevos']:.1f}%")
+            st.progress(metrics['pct_matriculas_remarketing'] / 100, 
+                       text=f"Remarketing: {metrics['pct_matriculas_remarketing']:.1f}%")
         
         # 3. Estimación de cierre
         st.subheader("Estimación de Cierre (Monte Carlo)")
@@ -199,14 +234,14 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         cols[1].metric("Matrículas Proyectadas (Media)", f"{matriculas_mean} ± {matriculas_std}")
         cols[2].metric("Intervalo 90% Confianza", f"{percentil_05} - {percentil_95}")
 
-        # Añadir visualización de probabilidades
-        st.subheader("Probabilidades de Alcanzar Objetivo")
-        prob_cols = st.columns(5)
-        prob_cols[0].metric("80% del Objetivo", f"{projections['prob_meta_80']:.1f}%")
-        prob_cols[1].metric("90% del Objetivo", f"{projections['prob_meta_90']:.1f}%")
-        prob_cols[2].metric("100% del Objetivo", f"{projections['prob_meta_100']:.1f}%")
-        prob_cols[3].metric("110% del Objetivo", f"{projections['prob_meta_110']:.1f}%")
-        prob_cols[4].metric("120% del Objetivo", f"{projections['prob_meta_120']:.1f}%")
+        # Añadir visualización de probabilidades con barras de progreso
+        st.markdown("##### Probabilidades de Alcanzar Objetivo")
+        
+        umbrales = [80, 90, 100, 110, 120]
+        for umbral in umbrales:
+            prob_key = f'prob_meta_{umbral}'
+            st.progress(min(1.0, projections[prob_key] / 100), 
+                       text=f"{umbral}% del Objetivo: {projections[prob_key]:.1f}% de probabilidad")
 
         # Visualización de la distribución
         st.subheader("Distribución de Matrículas Proyectadas")
@@ -218,6 +253,11 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         ax.axvline(x=matriculas_mean, color='red', linestyle='--', label=f'Media: {matriculas_mean}')
         ax.axvline(x=percentil_05, color='green', linestyle=':', label=f'P5: {percentil_05}')
         ax.axvline(x=percentil_95, color='green', linestyle=':', label=f'P95: {percentil_95}')
+        
+        # Línea para objetivo
+        ax.axvline(x=metrics['objetivo_matriculas'], color='orange', linestyle='-', 
+                   label=f'Objetivo: {metrics["objetivo_matriculas"]}')
+        
         ax.set_xlabel('Matrículas Proyectadas')
         ax.set_ylabel('Frecuencia')
         ax.legend()
@@ -256,7 +296,7 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
             col1.download_button(
                 label="Descargar Excel",
                 data=excel_buffer,
-                file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                file_name=f"reporte_status_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.xlsx",
                 mime="application/vnd.ms-excel"
             )
         except Exception as e:
@@ -270,7 +310,7 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
             col2.download_button(
                 label="Descargar PDF",
                 data=pdf_buffer,
-                file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                file_name=f"reporte_status_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pdf",
                 mime="application/pdf"
             )
         except Exception as e:
@@ -284,7 +324,7 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
             col3.download_button(
                 label="Descargar PowerPoint",
                 data=pptx_buffer,
-                file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pptx",
+                file_name=f"reporte_status_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
             )
         except Exception as e:
@@ -305,7 +345,7 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
 # Información adicional
 st.sidebar.title("Información")
 st.sidebar.info("""
-Este sistema genera reportes estratégicos por marca y programa educativo, 
+Este sistema genera reportes estratégicos semanales por marca y programa educativo, 
 adaptados a los diferentes modelos como GRADO (convocatorias fijas) y 
 POSGRADO (cohortes variables y continuas ADVANCE).
 """)
