@@ -1,0 +1,258 @@
+# utils/calculations.py
+
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from scipy import stats
+
+def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, marca):
+    """Calcular métricas para el reporte estratégico"""
+    metrics = {}
+    
+    # Fecha actual para cálculos
+    now = datetime.now()
+    
+    # 1. Tiempo transcurrido
+    # Calculamos el promedio ponderado del tiempo transcurrido por programa
+    programas = df_calendario[df_calendario['Marca'] == marca]['Programa'].unique()
+    tiempo_total = 0
+    peso_total = 0
+    
+    for programa in programas:
+        calendario_programa = df_calendario[(df_calendario['Marca'] == marca) & 
+                                          (df_calendario['Programa'] == programa)]
+        
+        if not calendario_programa.empty:
+            fecha_inicio = calendario_programa['Fecha inicio'].iloc[0]
+            fecha_fin = calendario_programa['Fecha fin'].iloc[0]
+            
+            if pd.notna(fecha_inicio) and pd.notna(fecha_fin):
+                duracion_total = (fecha_fin - fecha_inicio).days
+                transcurrido = (now - fecha_inicio).days
+                
+                if duracion_total > 0:
+                    pct_transcurrido = min(100, max(0, (transcurrido / duracion_total) * 100))
+                    
+                    # Peso basado en el número de leads para este programa
+                    leads_programa = df_leads[(df_leads['Marca'] == marca) & 
+                                             (df_leads['Programa'] == programa)].shape[0]
+                    
+                    tiempo_total += pct_transcurrido * leads_programa
+                    peso_total += leads_programa
+    
+    metrics['tiempo_transcurrido'] = tiempo_total / max(1, peso_total)
+    
+    # 2. Leads acumulados
+    metrics['leads_acumulados'] = df_leads[df_leads['Marca'] == marca].shape[0]
+    
+    # 3. Matrículas acumuladas
+    metrics['matriculas_acumuladas'] = df_matriculados[df_matriculados['Marca'] == marca].shape[0]
+    
+    # 4. Meta de matrículas (asumimos un valor para la demostración)
+    # En un caso real, esto vendría de los datos o de una configuración
+    metrics['meta_matriculas'] = 100  # Este valor debe ajustarse o calcularse desde los datos
+    
+    # 5. Tasa de conversión
+    if metrics['leads_acumulados'] > 0:
+        metrics['tasa_conversion'] = (metrics['matriculas_acumuladas'] / metrics['leads_acumulados']) * 100
+    else:
+        metrics['tasa_conversion'] = 0
+    
+    # 6. Composición de matrículas (nuevos vs remarketing)
+    matriculas_marca = df_matriculados[df_matriculados['Marca'] == marca]
+    matriculas_nuevas = 0
+    matriculas_remarketing = 0
+    
+    for _, matricula in matriculas_marca.iterrows():
+        programa = matricula['Programa']
+        fecha_ingreso = matricula['Fecha ingreso']
+        
+        # Obtener fecha de inicio de programa
+        calendario_programa = df_calendario[(df_calendario['Marca'] == marca) & 
+                                          (df_calendario['Programa'] == programa)]
+        
+        if not calendario_programa.empty and pd.notna(fecha_ingreso):
+            fecha_inicio = calendario_programa['Fecha inicio'].iloc[0]
+            
+            if pd.notna(fecha_inicio):
+                if fecha_ingreso >= fecha_inicio:
+                    matriculas_nuevas += 1
+                else:
+                    matriculas_remarketing += 1
+    
+    total_matriculas = matriculas_nuevas + matriculas_remarketing
+    
+    if total_matriculas > 0:
+        metrics['pct_matriculas_nuevos'] = (matriculas_nuevas / total_matriculas) * 100
+        metrics['pct_matriculas_remarketing'] = (matriculas_remarketing / total_matriculas) * 100
+    else:
+        metrics['pct_matriculas_nuevos'] = 0
+        metrics['pct_matriculas_remarketing'] = 0
+    
+    # 7. Inversión acumulada
+    metrics['inversion_acumulada'] = df_inversion['Inversión acumulada'].sum()
+    
+    # 8. CPL promedio
+    if metrics['leads_acumulados'] > 0:
+        metrics['cpl_promedio'] = metrics['inversion_acumulada'] / metrics['leads_acumulados']
+    else:
+        metrics['cpl_promedio'] = 0
+    
+    return metrics
+
+def project_results(metrics, df_inversion, marca, num_simulations=10000):
+    """Proyectar resultados futuros usando simulación Monte Carlo"""
+    projections = {}
+    
+    # Parámetros base
+    inversion_total = 10000  # Este valor debería calcularse o extraerse de los datos
+    inversion_restante = max(0, inversion_total - metrics['inversion_acumulada'])
+    
+    # Parámetros históricos (valores medios)
+    tasa_conversion_media = metrics['tasa_conversion'] / 100  # Convertir a decimal
+    cpl_medio = metrics['cpl_promedio']
+    
+    # Inicializar arrays para resultados de simulación
+    matriculas_simuladas = np.zeros(num_simulations)
+    leads_simulados = np.zeros(num_simulations)
+    
+    # Ejecutar simulación Monte Carlo
+    for i in range(num_simulations):
+        # 1. Simular CPL con distribución normal (±15% alrededor de la media)
+        cpl_std_dev = cpl_medio * 0.15
+        cpl_simulado = np.random.normal(cpl_medio, cpl_std_dev)
+        cpl_simulado = max(1, cpl_simulado)  # Asegurar CPL positivo
+        
+        # 2. Simular leads generados con la inversión restante
+        leads_simulados[i] = inversion_restante / cpl_simulado
+        
+        # 3. Simular tasa de conversión con distribución beta
+        # La distribución beta es adecuada para tasas/proporciones (valores entre 0 y 1)
+        # Calculamos alpha y beta para centrar la distribución alrededor de nuestra tasa histórica
+        if 0 < tasa_conversion_media < 1:
+            # Varianza deseada (ajustable según la confianza en los datos históricos)
+            var_deseada = (tasa_conversion_media * 0.3)**2
+            
+            # Cálculo de parámetros alpha y beta para distribución beta
+            total = tasa_conversion_media * (1 - tasa_conversion_media) / var_deseada - 1
+            alpha = tasa_conversion_media * total
+            beta = (1 - tasa_conversion_media) * total
+            
+            # Simular tasa de conversión
+            tasa_simulada = np.random.beta(max(0.1, alpha), max(0.1, beta))
+        else:
+            # Fallback a una distribución normal truncada si la tasa está en los extremos
+            tasa_simulada = np.random.normal(tasa_conversion_media, 0.02)
+            tasa_simulada = max(0.001, min(0.999, tasa_simulada))
+        
+        # 4. Calcular matrículas esperadas para esta simulación
+        matriculas_simuladas[i] = leads_simulados[i] * tasa_simulada
+    
+    # Calcular estadísticas de la simulación
+    projections['leads_proyectados'] = int(np.mean(leads_simulados))
+    projections['leads_proyectados_std'] = np.std(leads_simulados)
+    
+    # Redondear matrículas al ser números enteros
+    matriculas_mean = np.mean(matriculas_simuladas)
+    matriculas_std = np.std(matriculas_simuladas)
+    
+    # Intervalos de confianza del 90%
+    percentiles = np.percentile(matriculas_simuladas, [5, 25, 50, 75, 95])
+    
+    projections['matriculas_proyectadas_min'] = int(percentiles[0])  # P5
+    projections['matriculas_proyectadas_q1'] = int(percentiles[1])   # P25
+    projections['matriculas_proyectadas_median'] = int(percentiles[2])  # P50
+    projections['matriculas_proyectadas_q3'] = int(percentiles[3])   # P75
+    projections['matriculas_proyectadas_max'] = int(percentiles[4])  # P95
+    
+    # Media y desviación estándar
+    projections['matriculas_proyectadas_mean'] = int(matriculas_mean)
+    projections['matriculas_proyectadas_std'] = matriculas_std
+    
+    # Probabilidad de alcanzar diferentes niveles de metas
+    if metrics['meta_matriculas'] > 0:
+        matriculas_totales = metrics['matriculas_acumuladas'] + matriculas_simuladas
+        
+        # Probabilidad de alcanzar diferentes porcentajes de la meta
+        umbrales = [0.8, 0.9, 1.0, 1.1, 1.2]
+        for umbral in umbrales:
+            meta_ajustada = metrics['meta_matriculas'] * umbral
+            prob = np.mean(matriculas_totales >= meta_ajustada) * 100
+            projections[f'prob_meta_{int(umbral*100)}'] = prob
+        
+        # Porcentaje de cumplimiento proyectado (basado en la media)
+        projections['pct_cumplimiento_proyectado'] = ((metrics['matriculas_acumuladas'] + matriculas_mean) / 
+                                                     metrics['meta_matriculas']) * 100
+    else:
+        for umbral in [0.8, 0.9, 1.0, 1.1, 1.2]:
+            projections[f'prob_meta_{int(umbral*100)}'] = 0
+        projections['pct_cumplimiento_proyectado'] = 0
+    
+    # Guardar los datos de la simulación para posibles visualizaciones
+    projections['simulacion_matriculas'] = matriculas_simuladas.tolist()
+    
+    return projections
+
+def analyze_programs(df_matriculados, df_leads, df_calendario):
+    """Analizar programas para identificar los mejores y con oportunidades"""
+    result = {}
+    
+    # Filtrar programas por la marca seleccionada (los DataFrames ya vienen filtrados)
+    programas_marca = df_calendario['Programa'].unique()
+    
+    # Crear DataFrame para análisis de programas
+    programas = []
+    
+    for programa in programas_marca:
+        leads = df_leads[df_leads['Programa'] == programa].shape[0]
+        matriculas = df_matriculados[df_matriculados['Programa'] == programa].shape[0]
+        
+        tasa_conversion = 0
+        if leads > 0:
+            tasa_conversion = (matriculas / leads) * 100
+        
+        programas.append({
+            'Programa': programa,
+            'Leads': leads,
+            'Matrículas': matriculas,
+            'Tasa Conversión (%)': round(tasa_conversion, 2)
+        })
+    
+    # Crear DataFrame con los datos de los programas
+    df_programas = pd.DataFrame(programas)
+    
+    # Clasificar automáticamente los programas
+    if not df_programas.empty:
+        # Añadir columna de clasificación
+        df_programas['Clasificación'] = ''
+        
+        # Top 5 programas con más matrículas
+        top_matriculas = df_programas.nlargest(5, 'Matrículas')['Programa'].tolist()
+        df_programas.loc[df_programas['Programa'].isin(top_matriculas), 'Clasificación'] = 'Top 5 Matrículas'
+        
+        # Programas con baja conversión (menos del 5% pero con más de 10 leads)
+        baja_conversion = df_programas[
+            (df_programas['Tasa Conversión (%)'] < 5) & 
+            (df_programas['Leads'] > 10) &
+            (~df_programas['Programa'].isin(top_matriculas))
+        ]['Programa'].tolist()
+        df_programas.loc[df_programas['Programa'].isin(baja_conversion), 'Clasificación'] = 'Baja Conversión'
+        
+        # Oportunidades (programas con alta conversión pero pocos leads)
+        oportunidades = df_programas[
+            (df_programas['Tasa Conversión (%)'] > 15) & 
+            (df_programas['Leads'] < 20) &
+            (~df_programas['Programa'].isin(top_matriculas)) &
+            (~df_programas['Programa'].isin(baja_conversion))
+        ]['Programa'].tolist()
+        df_programas.loc[df_programas['Programa'].isin(oportunidades), 'Clasificación'] = 'Oportunidad'
+    
+    # Ordenar por número de matrículas (descendente)
+    df_programas = df_programas.sort_values('Matrículas', ascending=False)
+    
+    # Preparar resultados
+    result['tabla_completa'] = df_programas
+    result['top_matriculas'] = df_programas.nlargest(5, 'Matrículas')
+    result['menor_conversion'] = df_programas.nsmallest(5, 'Tasa Conversión (%)')
+    
+    return result 
