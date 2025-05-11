@@ -5,6 +5,7 @@ import numpy as np
 import os
 from datetime import datetime, timedelta
 from faker import Faker
+import random
 
 fake = Faker('es_ES')
 
@@ -428,6 +429,217 @@ def generate_sample_data():
 
     print("Datos de ejemplo realistas generados correctamente en la carpeta 'sample_data'.")
     return True
+
+# Función para generar datos de demo en memoria (para visualización inmediata)
+def generate_demo_data(marca):
+    """
+    Genera datos de demostración en memoria para la visualización del dashboard
+    """
+    fake = Faker()
+    random.seed(42)
+    np.random.seed(42)
+    
+    # Configuraciones según la marca
+    if marca == "GRADO":
+        programas = ["Arquitectura", "Ingeniería Civil", "Derecho", "Psicología", 
+                     "Medicina", "Economía", "Comunicación Social", "Administración", "Marketing"]
+        fecha_inicio = datetime.now() - timedelta(days=45)
+        fecha_fin = datetime.now() + timedelta(days=45)
+        total_leads = 1200
+        tasa_conversion = 0.067
+    elif marca == "POSGRADO":
+        programas = ["MBA", "Maestría en Finanzas", "Maestría en Marketing", 
+                    "Maestría en RRHH", "Maestría en Tecnología", "Doctorado en Economía"]
+        fecha_inicio = datetime.now() - timedelta(days=30)
+        fecha_fin = datetime.now() + timedelta(days=90)
+        total_leads = 800
+        tasa_conversion = 0.09
+    else:
+        programas = [f"Programa {i+1}" for i in range(5)]
+        fecha_inicio = datetime.now() - timedelta(days=30)
+        fecha_fin = datetime.now() + timedelta(days=60)
+        total_leads = 500
+        tasa_conversion = 0.08
+    
+    # 1. Generar leads
+    leads_data = []
+    for _ in range(total_leads):
+        programa = random.choice(programas)
+        fecha_ingreso = fake.date_time_between(start_date=fecha_inicio - timedelta(days=30), 
+                                               end_date=datetime.now())
+        
+        # Añadir algunos leads anteriores para remarketing
+        if random.random() < 0.25:  # 25% de leads son anteriores (para remarketing)
+            fecha_ingreso = fecha_ingreso - timedelta(days=random.randint(60, 120))
+            
+        leads_data.append({
+            "ID lead": fake.uuid4(),
+            "Fecha ingreso": fecha_ingreso,
+            "Estado actual": random.choice(["Nuevo", "En seguimiento", "Interesado", "Alta probabilidad"]),
+            "Marca": marca,
+            "Programa": programa
+        })
+    
+    # 2. Generar matrículas (subset de leads)
+    matriculas_totales = int(total_leads * tasa_conversion)
+    
+    # Distribuir matrículas entre programas con sesgo
+    # Algunos programas tienen más éxito que otros
+    pesos_programas = {}
+    for programa in programas:
+        pesos_programas[programa] = random.uniform(0.5, 1.5)
+    
+    # Normalizar pesos
+    suma_pesos = sum(pesos_programas.values())
+    for programa in pesos_programas:
+        pesos_programas[programa] = pesos_programas[programa] / suma_pesos
+    
+    # Calcular matrículas por programa
+    matriculas_por_programa = {}
+    matriculas_restantes = matriculas_totales
+    
+    for i, programa in enumerate(programas):
+        if i == len(programas) - 1:
+            matriculas_por_programa[programa] = matriculas_restantes
+        else:
+            matriculas_programa = int(matriculas_totales * pesos_programas[programa])
+            matriculas_por_programa[programa] = matriculas_programa
+            matriculas_restantes -= matriculas_programa
+    
+    # Crear matrículas a partir de leads existentes
+    leads_df = pd.DataFrame(leads_data)
+    matriculas_data = []
+    
+    # Para cada programa, seleccionar leads al azar para convertir en matrícula
+    for programa, num_matriculas in matriculas_por_programa.items():
+        # Filtrar leads por programa
+        leads_programa = leads_df[leads_df["Programa"] == programa].copy()
+        
+        if len(leads_programa) > 0:
+            # Asegurarnos de no pedir más matrículas que leads disponibles
+            num_matriculas = min(num_matriculas, len(leads_programa))
+            
+            # Seleccionar leads al azar
+            leads_seleccionados = leads_programa.sample(n=num_matriculas)
+            
+            for _, lead in leads_seleccionados.iterrows():
+                # La fecha de matrícula es posterior a la fecha de ingreso del lead
+                dias_hasta_conversion = random.randint(3, 30)
+                fecha_matricula = lead["Fecha ingreso"] + timedelta(days=dias_hasta_conversion)
+                
+                # Asegurarse que la fecha no sea futura
+                if fecha_matricula > datetime.now():
+                    fecha_matricula = datetime.now() - timedelta(days=random.randint(1, 5))
+                
+                matriculas_data.append({
+                    "ID lead": lead["ID lead"],
+                    "Fecha ingreso": lead["Fecha ingreso"],
+                    "Fecha matrícula": fecha_matricula,
+                    "Marca": marca,
+                    "Programa": programa
+                })
+    
+    # 3. Generar datos de plan mensual
+    canales = ["Facebook", "Google", "Instagram", "TikTok", "Email Marketing"]
+    plan_mensual_data = []
+    
+    presupuesto_total = 50000  # Presupuesto total para todos los canales
+    
+    # Distribuir presupuesto entre canales
+    for canal in canales:
+        # Distribuir presupuesto con algo de variabilidad
+        porcentaje = random.uniform(0.1, 0.3)
+        presupuesto_canal = presupuesto_total * porcentaje
+        
+        # CPL varía por canal
+        if canal == "Facebook":
+            cpl = random.uniform(4, 7)
+        elif canal == "Google":
+            cpl = random.uniform(5, 9)
+        elif canal == "Instagram":
+            cpl = random.uniform(3, 6)
+        elif canal == "TikTok":
+            cpl = random.uniform(2, 5)
+        else:  # Email Marketing
+            cpl = random.uniform(1, 3)
+        
+        leads_estimados = int(presupuesto_canal / cpl)
+        
+        plan_mensual_data.append({
+            "Marca": marca,
+            "Canal": canal,
+            "Presupuesto total mes": presupuesto_canal,
+            "CPL estimado": cpl,
+            "Leads estimados": leads_estimados
+        })
+    
+    # 4. Generar datos de inversión acumulada
+    inversion_data = []
+    
+    # Porcentaje de ejecución del presupuesto (60-80%)
+    porcentaje_ejecutado = random.uniform(0.6, 0.8)
+    
+    for item in plan_mensual_data:
+        canal = item["Canal"]
+        presupuesto_canal = item["Presupuesto total mes"]
+        
+        # Variar el porcentaje de ejecución por canal
+        ajuste = random.uniform(0.8, 1.2)
+        inversion_acumulada = presupuesto_canal * porcentaje_ejecutado * ajuste
+        
+        # CPL real puede variar del estimado
+        cpl_variacion = random.uniform(0.85, 1.15)
+        cpl_real = item["CPL estimado"] * cpl_variacion
+        
+        inversion_data.append({
+            "Fecha": datetime.now(),
+            "Marca": marca,
+            "Canal": canal,
+            "Inversión acumulada": inversion_acumulada,
+            "CPL estimado": cpl_real
+        })
+    
+    # 5. Generar datos de calendario
+    calendario_data = []
+    
+    # Agregar una entrada para "Todos los programas"
+    calendario_data.append({
+        "Marca": marca,
+        "Programa": "Todos los programas",
+        "Fecha inicio": fecha_inicio,
+        "Fecha fin": fecha_fin,
+        "Tipo": "Convocatoria"
+    })
+    
+    # Añadir programas individuales con ligeras variaciones en fechas
+    for programa in programas:
+        # Variar fechas por programa
+        ajuste_dias_inicio = random.randint(-10, 10)
+        ajuste_dias_fin = random.randint(-10, 10)
+        
+        fecha_inicio_prog = fecha_inicio + timedelta(days=ajuste_dias_inicio)
+        fecha_fin_prog = fecha_fin + timedelta(days=ajuste_dias_fin)
+        
+        # Asegurar que fecha_fin > fecha_inicio
+        if fecha_fin_prog <= fecha_inicio_prog:
+            fecha_fin_prog = fecha_inicio_prog + timedelta(days=30)
+        
+        calendario_data.append({
+            "Marca": marca,
+            "Programa": programa,
+            "Fecha inicio": fecha_inicio_prog,
+            "Fecha fin": fecha_fin_prog,
+            "Tipo": "Convocatoria" if random.random() < 0.7 else "Cohorte"
+        })
+    
+    # Convertir listas a DataFrames
+    df_leads = pd.DataFrame(leads_data)
+    df_matriculados = pd.DataFrame(matriculas_data)
+    df_plan_mensual = pd.DataFrame(plan_mensual_data)
+    df_inversion = pd.DataFrame(inversion_data)
+    df_calendario = pd.DataFrame(calendario_data)
+    
+    return df_matriculados, df_leads, df_plan_mensual, df_inversion, df_calendario
 
 if __name__ == "__main__":
     generate_sample_data()
