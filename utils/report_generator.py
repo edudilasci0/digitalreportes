@@ -8,6 +8,7 @@ from datetime import datetime
 from fpdf import FPDF
 from pptx import Presentation
 from pptx.util import Inches, Pt
+import collections
 
 def generate_excel(metrics, projections, program_analysis, comentarios, marca):
     """Generar informe en formato Excel"""
@@ -61,13 +62,34 @@ def generate_excel(metrics, projections, program_analysis, comentarios, marca):
         df_proyecciones.to_excel(writer, sheet_name='Proyecciones', index=False)
         
         # 3. Hoja de distribución de resultados
-        program_analysis['tabla_completa'].to_excel(writer, sheet_name='Distribución Resultados', index=False)
+        # Asegurarnos que program_analysis['tabla_completa'] sea un DataFrame
+        if not isinstance(program_analysis['tabla_completa'], pd.DataFrame):
+            print("Convirtiendo 'tabla_completa' a DataFrame")
+            df_tabla_completa = pd.DataFrame(program_analysis['tabla_completa'])
+        else:
+            df_tabla_completa = program_analysis['tabla_completa']
+            
+        df_tabla_completa.to_excel(writer, sheet_name='Distribución Resultados', index=False)
         
         # 4. Hoja de Top 5 programas
-        program_analysis['top_matriculas'].to_excel(writer, sheet_name='Top Programas', index=False)
+        # Asegurarnos que program_analysis['top_matriculas'] sea un DataFrame
+        if not isinstance(program_analysis['top_matriculas'], pd.DataFrame):
+            print("Convirtiendo 'top_matriculas' a DataFrame")
+            df_top_matriculas = pd.DataFrame(program_analysis['top_matriculas'])
+        else:
+            df_top_matriculas = program_analysis['top_matriculas']
+            
+        df_top_matriculas.to_excel(writer, sheet_name='Top Programas', index=False)
         
         # 5. Hoja de programas con menor conversión
-        program_analysis['menor_conversion'].to_excel(writer, sheet_name='Menor Conversión', index=False)
+        # Asegurarnos que program_analysis['menor_conversion'] sea un DataFrame
+        if not isinstance(program_analysis['menor_conversion'], pd.DataFrame):
+            print("Convirtiendo 'menor_conversion' a DataFrame")
+            df_menor_conversion = pd.DataFrame(program_analysis['menor_conversion'])
+        else:
+            df_menor_conversion = program_analysis['menor_conversion']
+            
+        df_menor_conversion.to_excel(writer, sheet_name='Menor Conversión', index=False)
         
         # 6. Hoja de comentarios
         df_comentarios = pd.DataFrame({
@@ -94,9 +116,12 @@ def generate_excel(metrics, projections, program_analysis, comentarios, marca):
             worksheet.set_column('A:A', 30)
             worksheet.set_column('B:Z', 15)
             
-            # Aplicar formato a los encabezados
-            for col_num, value in enumerate(writer.sheets[sheet_name].table.columns):
-                worksheet.write(0, col_num, value, header_format)
+            # Aplicar formato a los encabezados de forma segura
+            try:
+                for col_num, value in enumerate(writer.sheets[sheet_name].table.columns):
+                    worksheet.write(0, col_num, value, header_format)
+            except AttributeError as e:
+                print(f"Error al formatear encabezados en {sheet_name}: {e}")
     
     buffer.seek(0)
     return buffer
@@ -156,8 +181,14 @@ def generate_pdf(metrics, projections, program_analysis, comentarios, marca):
     pdf.cell(30, 10, "Matrículas", 1, 0, 'C')
     pdf.cell(35, 10, "Tasa Conv. (%)", 1, 1, 'C')
     
+    # Asegurarnos que program_analysis['top_matriculas'] sea un DataFrame
+    if not isinstance(program_analysis['top_matriculas'], pd.DataFrame):
+        df_top_matriculas = pd.DataFrame(program_analysis['top_matriculas'])
+    else:
+        df_top_matriculas = program_analysis['top_matriculas']
+    
     pdf.set_font('Arial', '', 10)
-    for _, row in program_analysis['top_matriculas'].iterrows():
+    for _, row in df_top_matriculas.iterrows():
         pdf.cell(95, 10, str(row['Programa']), 1, 0, 'L')
         pdf.cell(30, 10, str(row['Leads']), 1, 0, 'C')
         pdf.cell(30, 10, str(row['Matrículas']), 1, 0, 'C')
@@ -229,29 +260,40 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
     title = slide.shapes.title
     title.text = "Top 5 Programas con Más Matrículas"
     
+    # Asegurarnos que program_analysis['top_matriculas'] sea un DataFrame
+    if not isinstance(program_analysis['top_matriculas'], pd.DataFrame):
+        df_top_matriculas = pd.DataFrame(program_analysis['top_matriculas'])
+    else:
+        df_top_matriculas = program_analysis['top_matriculas']
+    
     # Crear tabla
-    rows = len(program_analysis['top_matriculas']) + 1  # +1 para el encabezado
-    cols = 4
-    
-    left = Inches(1)
-    top = Inches(2)
-    width = Inches(8)
-    height = Inches(0.5 * rows)
-    
-    table = slide.shapes.add_table(rows, cols, left, top, width, height).table
-    
-    # Encabezados
-    table.cell(0, 0).text = "Programa"
-    table.cell(0, 1).text = "Leads"
-    table.cell(0, 2).text = "Matrículas"
-    table.cell(0, 3).text = "Tasa Conv. (%)"
-    
-    # Datos
-    for i, (_, row) in enumerate(program_analysis['top_matriculas'].iterrows(), 1):
-        table.cell(i, 0).text = str(row['Programa'])
-        table.cell(i, 1).text = str(row['Leads'])
-        table.cell(i, 2).text = str(row['Matrículas'])
-        table.cell(i, 3).text = str(row['Tasa Conversión (%)'])
+    if not df_top_matriculas.empty:
+        rows = len(df_top_matriculas) + 1  # +1 para el encabezado
+        cols = 4
+        
+        left = Inches(1)
+        top = Inches(2)
+        width = Inches(8)
+        height = Inches(0.5 * rows)
+        
+        table = slide.shapes.add_table(rows, cols, left, top, width, height).table
+        
+        # Encabezados
+        table.cell(0, 0).text = "Programa"
+        table.cell(0, 1).text = "Leads"
+        table.cell(0, 2).text = "Matrículas"
+        table.cell(0, 3).text = "Tasa Conv. (%)"
+        
+        # Datos
+        for i, (_, row) in enumerate(df_top_matriculas.iterrows(), 1):
+            table.cell(i, 0).text = str(row['Programa'])
+            table.cell(i, 1).text = str(row['Leads'])
+            table.cell(i, 2).text = str(row['Matrículas'])
+            table.cell(i, 3).text = str(row['Tasa Conversión (%)'])
+    else:
+        content = slide.placeholders[1]
+        tf = content.text_frame
+        tf.text = "No hay datos disponibles para mostrar"
     
     # 6. Comentarios
     slide = prs.slides.add_slide(prs.slide_layouts[1])

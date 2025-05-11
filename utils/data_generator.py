@@ -57,6 +57,8 @@ def generate_sample_data():
         filename = f"sample_data/matriculados_{marca.lower()}.xlsx"
         with pd.ExcelWriter(filename, engine='openpyxl') as writer:
             df_matriculados.to_excel(writer, sheet_name="matriculados", index=False)
+            # Aseguramos que la hoja se llame 'matriculados'
+            print(f"Archivo {filename} generado con hoja 'matriculados'")
         
         # 2. Generar leads_activos.xlsx para cada marca
         num_leads = np.random.randint(200, 500)  # Más leads que matrículas
@@ -82,6 +84,8 @@ def generate_sample_data():
         filename = f"sample_data/leads_activos_{marca.lower()}.xlsx"
         with pd.ExcelWriter(filename, engine='openpyxl') as writer:
             df_leads.to_excel(writer, sheet_name="leads_activos", index=False)
+            # Aseguramos que la hoja se llame 'leads_activos'
+            print(f"Archivo {filename} generado con hoja 'leads_activos'")
     
     # 3. Generar planificacion.xlsx para todas las marcas
     # 3.1 plan_mensual
@@ -156,6 +160,7 @@ def generate_sample_data():
         df_plan_mensual.to_excel(writer, sheet_name="plan_mensual", index=False)
         df_inversion_acumulada.to_excel(writer, sheet_name="inversion_acumulada", index=False)
         df_calendario.to_excel(writer, sheet_name="calendario_convocatoria", index=False)
+        print(f"Archivo {filename} generado con hojas: plan_mensual, inversion_acumulada, calendario_convocatoria")
 
     return True
 

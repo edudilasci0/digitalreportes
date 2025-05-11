@@ -86,6 +86,14 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         projections = project_results(metrics, marca_inversion, selected_marca)
         program_analysis = analyze_programs(marca_matriculados, marca_leads, marca_calendario)
         
+        # Validar estructura de program_analysis
+        for key in ['tabla_completa', 'top_matriculas', 'menor_conversion']:
+            if key not in program_analysis:
+                st.error(f"Error: Falta la clave '{key}' en el análisis de programas")
+                progress_bar.empty()
+                status_text.empty()
+                st.stop()
+        
         progress_bar.progress(90)
         status_text.text("Generando visualizaciones...")
         
@@ -171,38 +179,55 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         st.subheader("Exportar Reporte")
         col1, col2, col3 = st.columns(3)
         
-        # Generar Excel
-        excel_buffer = generate_excel(metrics, projections, program_analysis, comentarios, selected_marca)
-        col1.download_button(
-            label="Descargar Excel",
-            data=excel_buffer,
-            file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.ms-excel"
-        )
+        try:
+            # Generar Excel
+            excel_buffer = generate_excel(metrics, projections, program_analysis, comentarios, selected_marca)
+            col1.download_button(
+                label="Descargar Excel",
+                data=excel_buffer,
+                file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.ms-excel"
+            )
+        except Exception as e:
+            st.error(f"Error al generar Excel: {str(e)}")
+            import traceback
+            st.write(traceback.format_exc())
         
-        # Generar PDF
-        pdf_buffer = generate_pdf(metrics, projections, program_analysis, comentarios, selected_marca)
-        col2.download_button(
-            label="Descargar PDF",
-            data=pdf_buffer,
-            file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pdf",
-            mime="application/pdf"
-        )
+        try:
+            # Generar PDF
+            pdf_buffer = generate_pdf(metrics, projections, program_analysis, comentarios, selected_marca)
+            col2.download_button(
+                label="Descargar PDF",
+                data=pdf_buffer,
+                file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf"
+            )
+        except Exception as e:
+            st.error(f"Error al generar PDF: {str(e)}")
+            import traceback
+            st.write(traceback.format_exc())
         
-        # Generar PowerPoint
-        pptx_buffer = generate_pptx(metrics, projections, program_analysis, comentarios, selected_marca)
-        col3.download_button(
-            label="Descargar PowerPoint",
-            data=pptx_buffer,
-            file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        )
+        try:
+            # Generar PowerPoint
+            pptx_buffer = generate_pptx(metrics, projections, program_analysis, comentarios, selected_marca)
+            col3.download_button(
+                label="Descargar PowerPoint",
+                data=pptx_buffer,
+                file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
+        except Exception as e:
+            st.error(f"Error al generar PowerPoint: {str(e)}")
+            import traceback
+            st.write(traceback.format_exc())
         
         progress_bar.progress(100)
         status_text.text("¡Reporte generado con éxito!")
         
     except Exception as e:
         st.error(f"Error al generar el reporte: {str(e)}")
+        import traceback
+        st.write(traceback.format_exc())
         progress_bar.empty()
         status_text.empty()
 

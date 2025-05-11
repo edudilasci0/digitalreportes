@@ -197,6 +197,15 @@ def analyze_programs(df_matriculados, df_leads, df_calendario):
     """Analizar programas para identificar los mejores y con oportunidades"""
     result = {}
     
+    # Validar que tengamos datos suficientes
+    if df_calendario.empty:
+        # Si no hay datos, crear DataFrames vacíos para evitar errores
+        empty_df = pd.DataFrame(columns=['Programa', 'Leads', 'Matrículas', 'Tasa Conversión (%)', 'Clasificación'])
+        result['tabla_completa'] = empty_df
+        result['top_matriculas'] = empty_df
+        result['menor_conversion'] = empty_df
+        return result
+    
     # Filtrar programas por la marca seleccionada (los DataFrames ya vienen filtrados)
     programas_marca = df_calendario['Programa'].unique()
     
@@ -221,13 +230,21 @@ def analyze_programs(df_matriculados, df_leads, df_calendario):
     # Crear DataFrame con los datos de los programas
     df_programas = pd.DataFrame(programas)
     
+    # Manejo de DataFrames vacíos
+    if df_programas.empty:
+        empty_df = pd.DataFrame(columns=['Programa', 'Leads', 'Matrículas', 'Tasa Conversión (%)', 'Clasificación'])
+        result['tabla_completa'] = empty_df
+        result['top_matriculas'] = empty_df
+        result['menor_conversion'] = empty_df
+        return result
+    
     # Clasificar automáticamente los programas
-    if not df_programas.empty:
-        # Añadir columna de clasificación
-        df_programas['Clasificación'] = ''
-        
-        # Top 5 programas con más matrículas
-        top_matriculas = df_programas.nlargest(5, 'Matrículas')['Programa'].tolist()
+    # Añadir columna de clasificación
+    df_programas['Clasificación'] = ''
+    
+    # Top 5 programas con más matrículas
+    if len(df_programas) > 0:
+        top_matriculas = df_programas.nlargest(min(5, len(df_programas)), 'Matrículas')['Programa'].tolist()
         df_programas.loc[df_programas['Programa'].isin(top_matriculas), 'Clasificación'] = 'Top 5 Matrículas'
         
         # Programas con baja conversión (menos del 5% pero con más de 10 leads)
@@ -252,7 +269,13 @@ def analyze_programs(df_matriculados, df_leads, df_calendario):
     
     # Preparar resultados
     result['tabla_completa'] = df_programas
-    result['top_matriculas'] = df_programas.nlargest(5, 'Matrículas')
-    result['menor_conversion'] = df_programas.nsmallest(5, 'Tasa Conversión (%)')
+    
+    # Crear copias para evitar problemas de referencias
+    if len(df_programas) > 0:
+        result['top_matriculas'] = df_programas.nlargest(min(5, len(df_programas)), 'Matrículas').copy()
+        result['menor_conversion'] = df_programas.nsmallest(min(5, len(df_programas)), 'Tasa Conversión (%)').copy()
+    else:
+        result['top_matriculas'] = pd.DataFrame(columns=df_programas.columns)
+        result['menor_conversion'] = pd.DataFrame(columns=df_programas.columns)
     
     return result 
