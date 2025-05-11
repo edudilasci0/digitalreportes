@@ -5,7 +5,7 @@ import numpy as np
 from datetime import datetime
 from scipy import stats
 
-def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, marca):
+def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, marca, objetivo_matriculas=100):
     """Calcular métricas para el reporte estratégico"""
     metrics = {}
     
@@ -13,34 +13,37 @@ def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, ma
     now = datetime.now()
     
     # 1. Tiempo transcurrido
-    # Calculamos el promedio ponderado del tiempo transcurrido por programa
-    programas = df_calendario[df_calendario['Marca'] == marca]['Programa'].unique()
-    tiempo_total = 0
-    peso_total = 0
-    
-    for programa in programas:
-        calendario_programa = df_calendario[(df_calendario['Marca'] == marca) & 
-                                          (df_calendario['Programa'] == programa)]
-        
-        if not calendario_programa.empty:
-            fecha_inicio = calendario_programa['Fecha inicio'].iloc[0]
-            fecha_fin = calendario_programa['Fecha fin'].iloc[0]
+    # El cálculo solo se aplica a marcas con convocatorias (GRADO y UNISUD)
+    if marca in ["GRADO", "UNISUD"]:
+        # Calculamos el promedio ponderado del tiempo transcurrido
+        # Para la nueva estructura, usamos el mismo valor para todos los programas
+        if not df_calendario.empty:
+            # Si hay una fila con 'Todos los programas', usar esa
+            if 'Todos los programas' in df_calendario['Programa'].values:
+                calendario_convocatoria = df_calendario[df_calendario['Programa'] == 'Todos los programas']
+            else:
+                # De lo contrario, usar la primera fila
+                calendario_convocatoria = df_calendario.iloc[0:1]
+            
+            # Usar la única fila para calcular el tiempo transcurrido
+            fecha_inicio = calendario_convocatoria['Fecha inicio'].iloc[0]
+            fecha_fin = calendario_convocatoria['Fecha fin'].iloc[0]
             
             if pd.notna(fecha_inicio) and pd.notna(fecha_fin):
-                duracion_total = (fecha_fin - fecha_inicio).days
-                transcurrido = (now - fecha_inicio).days
+                duracion_total = (fecha_fin - fecha_inicio).total_seconds() / (24 * 3600)  # convertir a días
+                transcurrido = (now - fecha_inicio).total_seconds() / (24 * 3600)  # convertir a días
                 
                 if duracion_total > 0:
-                    pct_transcurrido = min(100, max(0, (transcurrido / duracion_total) * 100))
-                    
-                    # Peso basado en el número de leads para este programa
-                    leads_programa = df_leads[(df_leads['Marca'] == marca) & 
-                                             (df_leads['Programa'] == programa)].shape[0]
-                    
-                    tiempo_total += pct_transcurrido * leads_programa
-                    peso_total += leads_programa
-    
-    metrics['tiempo_transcurrido'] = tiempo_total / max(1, peso_total)
+                    metrics['tiempo_transcurrido'] = min(100, max(0, (transcurrido / duracion_total) * 100))
+                else:
+                    metrics['tiempo_transcurrido'] = 0
+            else:
+                metrics['tiempo_transcurrido'] = 0
+        else:
+            metrics['tiempo_transcurrido'] = 0
+    else:
+        # Para marcas sin convocatorias, este cálculo no es relevante
+        metrics['tiempo_transcurrido'] = None
     
     # 2. Leads acumulados
     metrics['leads_acumulados'] = df_leads[df_leads['Marca'] == marca].shape[0]
@@ -48,9 +51,8 @@ def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, ma
     # 3. Matrículas acumuladas
     metrics['matriculas_acumuladas'] = df_matriculados[df_matriculados['Marca'] == marca].shape[0]
     
-    # 4. Meta de matrículas (asumimos un valor para la demostración)
-    # En un caso real, esto vendría de los datos o de una configuración
-    metrics['meta_matriculas'] = 100  # Este valor debe ajustarse o calcularse desde los datos
+    # 4. Objetivo de matrículas (valor configurado por el usuario)
+    metrics['objetivo_matriculas'] = objetivo_matriculas
     
     # 5. Tasa de conversión
     if metrics['leads_acumulados'] > 0:
@@ -63,22 +65,38 @@ def calculate_metrics(df_matriculados, df_leads, df_calendario, df_inversion, ma
     matriculas_nuevas = 0
     matriculas_remarketing = 0
     
+    # Obtener la fecha de inicio para esta marca
+    fecha_inicio_marca = None
+    if not df_calendario.empty:
+        # Si hay una fila con 'Todos los programas', usar esa
+        if 'Todos los programas' in df_calendario['Programa'].values:
+            fecha_inicio_df = df_calendario[df_calendario['Programa'] == 'Todos los programas']['Fecha inicio']
+            if not fecha_inicio_df.empty:
+                fecha_inicio_marca = fecha_inicio_df.iloc[0]
+    
     for _, matricula in matriculas_marca.iterrows():
         programa = matricula['Programa']
         fecha_ingreso = matricula['Fecha ingreso']
         
-        # Obtener fecha de inicio de programa
-        calendario_programa = df_calendario[(df_calendario['Marca'] == marca) & 
-                                          (df_calendario['Programa'] == programa)]
-        
-        if not calendario_programa.empty and pd.notna(fecha_ingreso):
-            fecha_inicio = calendario_programa['Fecha inicio'].iloc[0]
+        # Usar la fecha de inicio de la marca para todos los programas
+        if fecha_inicio_marca is not None and pd.notna(fecha_ingreso):
+            if fecha_ingreso >= fecha_inicio_marca:
+                matriculas_nuevas += 1
+            else:
+                matriculas_remarketing += 1
+        else:
+            # Si no tenemos fecha de inicio, intentar con la fecha específica del programa
+            calendario_programa = df_calendario[(df_calendario['Marca'] == marca) & 
+                                              (df_calendario['Programa'] == programa)]
             
-            if pd.notna(fecha_inicio):
-                if fecha_ingreso >= fecha_inicio:
-                    matriculas_nuevas += 1
-                else:
-                    matriculas_remarketing += 1
+            if not calendario_programa.empty and pd.notna(fecha_ingreso):
+                fecha_inicio = calendario_programa['Fecha inicio'].iloc[0]
+                
+                if pd.notna(fecha_inicio):
+                    if fecha_ingreso >= fecha_inicio:
+                        matriculas_nuevas += 1
+                    else:
+                        matriculas_remarketing += 1
     
     total_matriculas = matriculas_nuevas + matriculas_remarketing
     
@@ -169,20 +187,20 @@ def project_results(metrics, df_inversion, marca, num_simulations=10000):
     projections['matriculas_proyectadas_mean'] = int(matriculas_mean)
     projections['matriculas_proyectadas_std'] = matriculas_std
     
-    # Probabilidad de alcanzar diferentes niveles de metas
-    if metrics['meta_matriculas'] > 0:
+    # Probabilidad de alcanzar diferentes niveles de objetivos
+    if metrics['objetivo_matriculas'] > 0:
         matriculas_totales = metrics['matriculas_acumuladas'] + matriculas_simuladas
         
-        # Probabilidad de alcanzar diferentes porcentajes de la meta
+        # Probabilidad de alcanzar diferentes porcentajes del objetivo
         umbrales = [0.8, 0.9, 1.0, 1.1, 1.2]
         for umbral in umbrales:
-            meta_ajustada = metrics['meta_matriculas'] * umbral
+            meta_ajustada = metrics['objetivo_matriculas'] * umbral
             prob = np.mean(matriculas_totales >= meta_ajustada) * 100
             projections[f'prob_meta_{int(umbral*100)}'] = prob
         
         # Porcentaje de cumplimiento proyectado (basado en la media)
         projections['pct_cumplimiento_proyectado'] = ((metrics['matriculas_acumuladas'] + matriculas_mean) / 
-                                                     metrics['meta_matriculas']) * 100
+                                                     metrics['objetivo_matriculas']) * 100
     else:
         for umbral in [0.8, 0.9, 1.0, 1.1, 1.2]:
             projections[f'prob_meta_{int(umbral*100)}'] = 0

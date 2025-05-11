@@ -16,29 +16,36 @@ def generate_excel(metrics, projections, program_analysis, comentarios, marca):
     
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         # 1. Hoja de resumen
+        metricas_list = [
+            'Leads Acumulados',
+            'Matrículas Acumuladas',
+            'Objetivo de Matrículas',
+            'Tasa de Conversión (%)',
+            '% Matrículas Leads Nuevos',
+            '% Matrículas Remarketing',
+            'Inversión Acumulada',
+            'CPL Promedio'
+        ]
+        
+        valores_list = [
+            metrics['leads_acumulados'],
+            metrics['matriculas_acumuladas'],
+            metrics['objetivo_matriculas'],
+            f"{metrics['tasa_conversion']:.2f}%",
+            f"{metrics['pct_matriculas_nuevos']:.1f}%",
+            f"{metrics['pct_matriculas_remarketing']:.1f}%",
+            f"${metrics['inversion_acumulada']:,.2f}",
+            f"${metrics['cpl_promedio']:,.2f}"
+        ]
+        
+        # Agregar tiempo transcurrido solo si es relevante
+        if marca in ["GRADO", "UNISUD"] and metrics['tiempo_transcurrido'] is not None:
+            metricas_list.insert(0, 'Tiempo Transcurrido (%)')
+            valores_list.insert(0, f"{metrics['tiempo_transcurrido']:.1f}%")
+        
         df_resumen = pd.DataFrame({
-            'Métrica': [
-                'Tiempo Transcurrido (%)',
-                'Leads Acumulados',
-                'Matrículas Acumuladas',
-                'Meta de Matrículas',
-                'Tasa de Conversión (%)',
-                '% Matrículas Leads Nuevos',
-                '% Matrículas Remarketing',
-                'Inversión Acumulada',
-                'CPL Promedio'
-            ],
-            'Valor': [
-                f"{metrics['tiempo_transcurrido']:.1f}%",
-                metrics['leads_acumulados'],
-                metrics['matriculas_acumuladas'],
-                metrics['meta_matriculas'],
-                f"{metrics['tasa_conversion']:.2f}%",
-                f"{metrics['pct_matriculas_nuevos']:.1f}%",
-                f"{metrics['pct_matriculas_remarketing']:.1f}%",
-                f"${metrics['inversion_acumulada']:,.2f}",
-                f"${metrics['cpl_promedio']:,.2f}"
-            ]
+            'Métrica': metricas_list,
+            'Valor': valores_list
         })
         
         df_resumen.to_excel(writer, sheet_name='Resumen', index=False)
@@ -142,9 +149,15 @@ def generate_pdf(metrics, projections, program_analysis, comentarios, marca):
     pdf.ln(5)
     
     pdf.set_font('Arial', '', 12)
-    pdf.cell(95, 10, f"Tiempo Transcurrido: {metrics['tiempo_transcurrido']:.1f}%", 0, 0, 'L')
-    pdf.cell(95, 10, f"Leads Acumulados: {metrics['leads_acumulados']}", 0, 1, 'L')
-    pdf.cell(95, 10, f"Matrículas vs Meta: {metrics['matriculas_acumuladas']}/{metrics['meta_matriculas']}", 0, 0, 'L')
+    
+    # Solo mostrar tiempo transcurrido para marcas con convocatorias
+    if marca in ["GRADO", "UNISUD"] and metrics['tiempo_transcurrido'] is not None:
+        pdf.cell(95, 10, f"Tiempo Transcurrido: {metrics['tiempo_transcurrido']:.1f}%", 0, 0, 'L')
+        pdf.cell(95, 10, f"Leads Acumulados: {metrics['leads_acumulados']}", 0, 1, 'L')
+    else:
+        pdf.cell(190, 10, f"Leads Acumulados: {metrics['leads_acumulados']}", 0, 1, 'L')
+        
+    pdf.cell(95, 10, f"Matrículas vs Objetivo: {metrics['matriculas_acumuladas']}/{metrics['objetivo_matriculas']}", 0, 0, 'L')
     pdf.cell(95, 10, f"Tasa de Conversión: {metrics['tasa_conversion']:.2f}%", 0, 1, 'L')
     pdf.ln(10)
     
@@ -229,9 +242,15 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
     
     content = slide.placeholders[1]
     tf = content.text_frame
-    tf.text = f"Tiempo Transcurrido: {metrics['tiempo_transcurrido']:.1f}%\n"
+    
+    # Solo mostrar tiempo transcurrido para marcas con convocatorias
+    if marca in ["GRADO", "UNISUD"] and metrics['tiempo_transcurrido'] is not None:
+        tf.text = f"Tiempo Transcurrido: {metrics['tiempo_transcurrido']:.1f}%\n"
+    else:
+        tf.text = ""
+        
     tf.text += f"Leads Acumulados: {metrics['leads_acumulados']}\n"
-    tf.text += f"Matrículas vs Meta: {metrics['matriculas_acumuladas']}/{metrics['meta_matriculas']}\n"
+    tf.text += f"Matrículas vs Objetivo: {metrics['matriculas_acumuladas']}/{metrics['objetivo_matriculas']}\n"
     tf.text += f"Tasa de Conversión: {metrics['tasa_conversion']:.2f}%"
     
     # 3. Composición de Resultados

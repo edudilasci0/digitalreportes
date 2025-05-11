@@ -4,7 +4,7 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.data_processor import load_data, process_matriculados, process_leads, process_planificacion
 from utils.calculations import calculate_metrics, project_results, analyze_programs
 from utils.report_generator import generate_excel, generate_pdf, generate_pptx
@@ -52,6 +52,58 @@ with col2:
 with col3:
     planificacion_file = st.file_uploader(f"Subir archivo de planificación - {selected_marca}", type=["xlsx"])
 
+# Configuración adicional
+st.header("Configuración del Reporte")
+
+# Configurar objetivo de matrículas
+objetivo_matriculas = st.number_input(
+    "Objetivo de Matrículas", 
+    min_value=1, 
+    value=100, 
+    help="Establece el objetivo de matrículas para esta marca y período"
+)
+
+# Sólo para GRADO y UNISUD: configurar fechas de convocatoria
+if selected_marca in ["GRADO", "UNISUD"]:
+    st.subheader(f"Calendario de Convocatoria para {selected_marca}")
+    st.write("Esta marca se organiza por convocatorias que incluyen múltiples programas.")
+    
+    col1, col2 = st.columns(2)
+    
+    today = datetime.now()
+    default_start = today - timedelta(days=30)
+    default_end = today + timedelta(days=60)
+    
+    with col1:
+        fecha_inicio = st.date_input(
+            "Fecha de inicio de la convocatoria", 
+            value=default_start,
+            help="Fecha en que inició o iniciará la convocatoria"
+        )
+    
+    with col2:
+        fecha_fin = st.date_input(
+            "Fecha de fin de la convocatoria", 
+            value=default_end,
+            help="Fecha en que finaliza o finalizará la convocatoria"
+        )
+    
+    # Calcular y mostrar tiempo transcurrido
+    if fecha_inicio and fecha_fin:
+        duracion_total = (fecha_fin - fecha_inicio).days
+        transcurrido = (datetime.now().date() - fecha_inicio).days
+        
+        if duracion_total > 0:
+            pct_transcurrido = min(100, max(0, (transcurrido / duracion_total) * 100))
+            st.progress(pct_transcurrido / 100, text=f"Tiempo transcurrido: {pct_transcurrido:.1f}%")
+        else:
+            st.error("La fecha de fin debe ser posterior a la fecha de inicio.")
+else:
+    # Para marcas que no usan convocatorias
+    fecha_inicio = None
+    fecha_fin = None
+    st.info(f"La marca {selected_marca} no se organiza por convocatorias con fechas fijas.")
+
 # Generación de reportes
 if st.button("Generar Reporte") and matriculados_file and leads_file and planificacion_file:
     # Mostrar indicador de progreso
@@ -81,8 +133,21 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         marca_calendario = df_calendario[df_calendario['Marca'] == selected_marca]
         marca_inversion = df_inversion[df_inversion['Marca'] == selected_marca]
         
+        # Sobrescribir la configuración del calendario si se proporcionó
+        if selected_marca in ["GRADO", "UNISUD"] and fecha_inicio and fecha_fin:
+            # Crear un DataFrame actualizado con las fechas proporcionadas
+            calendario_custom = {
+                'Marca': [selected_marca],
+                'Programa': ['Todos los programas'],  # Ahora la convocatoria es para todos los programas
+                'Fecha inicio': [datetime.combine(fecha_inicio, datetime.min.time())],
+                'Fecha fin': [datetime.combine(fecha_fin, datetime.min.time())],
+                'Tipo': ['Convocatoria']
+            }
+            # Reemplazar el calendario existente para esta marca
+            marca_calendario = pd.DataFrame(calendario_custom)
+        
         # Calcular métricas
-        metrics = calculate_metrics(marca_matriculados, marca_leads, marca_calendario, marca_inversion, selected_marca)
+        metrics = calculate_metrics(marca_matriculados, marca_leads, marca_calendario, marca_inversion, selected_marca, objetivo_matriculas)
         projections = project_results(metrics, marca_inversion, selected_marca)
         program_analysis = analyze_programs(marca_matriculados, marca_leads, marca_calendario)
         
@@ -103,9 +168,15 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         # 1. Estado actual
         st.subheader("Estado Actual")
         cols = st.columns(4)
-        cols[0].metric("Tiempo Transcurrido", f"{metrics['tiempo_transcurrido']:.1f}%")
+        
+        # Solo mostrar tiempo transcurrido para marcas con convocatorias
+        if selected_marca in ["GRADO", "UNISUD"]:
+            cols[0].metric("Tiempo Transcurrido", f"{metrics['tiempo_transcurrido']:.1f}%")
+        else:
+            cols[0].info("No aplicable para esta marca")
+            
         cols[1].metric("Leads Acumulados", f"{metrics['leads_acumulados']}")
-        cols[2].metric("Matrículas vs Meta", f"{metrics['matriculas_acumuladas']}/{metrics['meta_matriculas']}")
+        cols[2].metric("Matrículas vs Objetivo", f"{metrics['matriculas_acumuladas']}/{metrics['objetivo_matriculas']}")
         cols[3].metric("Tasa de Conversión", f"{metrics['tasa_conversion']:.2f}%")
         
         # 2. Composición de resultados
@@ -129,13 +200,13 @@ if st.button("Generar Reporte") and matriculados_file and leads_file and planifi
         cols[2].metric("Intervalo 90% Confianza", f"{percentil_05} - {percentil_95}")
 
         # Añadir visualización de probabilidades
-        st.subheader("Probabilidades de Alcanzar Meta")
+        st.subheader("Probabilidades de Alcanzar Objetivo")
         prob_cols = st.columns(5)
-        prob_cols[0].metric("80% de Meta", f"{projections['prob_meta_80']:.1f}%")
-        prob_cols[1].metric("90% de Meta", f"{projections['prob_meta_90']:.1f}%")
-        prob_cols[2].metric("100% de Meta", f"{projections['prob_meta_100']:.1f}%")
-        prob_cols[3].metric("110% de Meta", f"{projections['prob_meta_110']:.1f}%")
-        prob_cols[4].metric("120% de Meta", f"{projections['prob_meta_120']:.1f}%")
+        prob_cols[0].metric("80% del Objetivo", f"{projections['prob_meta_80']:.1f}%")
+        prob_cols[1].metric("90% del Objetivo", f"{projections['prob_meta_90']:.1f}%")
+        prob_cols[2].metric("100% del Objetivo", f"{projections['prob_meta_100']:.1f}%")
+        prob_cols[3].metric("110% del Objetivo", f"{projections['prob_meta_110']:.1f}%")
+        prob_cols[4].metric("120% del Objetivo", f"{projections['prob_meta_120']:.1f}%")
 
         # Visualización de la distribución
         st.subheader("Distribución de Matrículas Proyectadas")
