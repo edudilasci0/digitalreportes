@@ -8,6 +8,7 @@ from datetime import datetime
 from fpdf import FPDF
 from pptx import Presentation
 from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
 import collections
 
 def generate_excel(metrics, projections, program_analysis, comentarios, marca):
@@ -270,8 +271,8 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
             1, left, top, width, height
         )
         shape.fill.solid()
-        shape.fill.fore_color.rgb = (225, 225, 225)  # Gris claro
-        shape.line.color.rgb = (200, 200, 200)       # Borde gris
+        shape.fill.fore_color.rgb = RGBColor(225, 225, 225)  # Gris claro
+        shape.line.color.rgb = RGBColor(200, 200, 200)       # Borde gris
         
         # Agregar rectángulo de progreso
         progress_width = width * (metrics['tiempo_transcurrido'] / 100)
@@ -279,7 +280,7 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
             1, left, top, progress_width, height
         )
         progress_shape.fill.solid()
-        progress_shape.fill.fore_color.rgb = (0, 112, 192)  # Azul
+        progress_shape.fill.fore_color.rgb = RGBColor(0, 112, 192)  # Azul
         progress_shape.line.fill.background()  # Sin borde
         
         # Texto encima de la barra
@@ -299,8 +300,8 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
             1, left, top, width, height
         )
         shape.fill.solid()
-        shape.fill.fore_color.rgb = (225, 225, 225)  # Gris claro
-        shape.line.color.rgb = (200, 200, 200)       # Borde gris
+        shape.fill.fore_color.rgb = RGBColor(225, 225, 225)  # Gris claro
+        shape.line.color.rgb = RGBColor(200, 200, 200)       # Borde gris
         
         # Agregar rectángulo de progreso
         pct_objetivo = min(1.0, metrics['matriculas_acumuladas'] / max(1, metrics['objetivo_matriculas']))
@@ -309,7 +310,7 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
             1, left, top, progress_width, height
         )
         progress_shape.fill.solid()
-        progress_shape.fill.fore_color.rgb = (112, 173, 71)  # Verde
+        progress_shape.fill.fore_color.rgb = RGBColor(112, 173, 71)  # Verde
         progress_shape.line.fill.background()  # Sin borde
         
         # Texto encima de la barra
@@ -343,15 +344,15 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
         1, left, top, width, height
     )
     shape.fill.solid()
-    shape.fill.fore_color.rgb = (225, 225, 225)  # Gris claro
-    shape.line.color.rgb = (200, 200, 200)       # Borde gris
+    shape.fill.fore_color.rgb = RGBColor(225, 225, 225)  # Gris claro
+    shape.line.color.rgb = RGBColor(200, 200, 200)       # Borde gris
     
     progress_width = width * (metrics['pct_matriculas_nuevos'] / 100)
     progress_shape = slide.shapes.add_shape(
         1, left, top, progress_width, height
     )
     progress_shape.fill.solid()
-    progress_shape.fill.fore_color.rgb = (0, 112, 192)  # Azul
+    progress_shape.fill.fore_color.rgb = RGBColor(0, 112, 192)  # Azul
     progress_shape.line.fill.background()  # Sin borde
     
     text_box = slide.shapes.add_textbox(left, top - Inches(0.3), width, Inches(0.25))
@@ -368,15 +369,15 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
         1, left, top, width, height
     )
     shape.fill.solid()
-    shape.fill.fore_color.rgb = (225, 225, 225)  # Gris claro
-    shape.line.color.rgb = (200, 200, 200)       # Borde gris
+    shape.fill.fore_color.rgb = RGBColor(225, 225, 225)  # Gris claro
+    shape.line.color.rgb = RGBColor(200, 200, 200)       # Borde gris
     
     progress_width = width * (metrics['pct_matriculas_remarketing'] / 100)
     progress_shape = slide.shapes.add_shape(
         1, left, top, progress_width, height
     )
     progress_shape.fill.solid()
-    progress_shape.fill.fore_color.rgb = (255, 153, 0)  # Naranja
+    progress_shape.fill.fore_color.rgb = RGBColor(255, 153, 0)  # Naranja
     progress_shape.line.fill.background()  # Sin borde
     
     text_box = slide.shapes.add_textbox(left, top - Inches(0.3), width, Inches(0.25))
@@ -414,8 +415,8 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
             1, left, curr_top, width, height
         )
         shape.fill.solid()
-        shape.fill.fore_color.rgb = (225, 225, 225)  # Gris claro
-        shape.line.color.rgb = (200, 200, 200)       # Borde gris
+        shape.fill.fore_color.rgb = RGBColor(225, 225, 225)  # Gris claro
+        shape.line.color.rgb = RGBColor(200, 200, 200)       # Borde gris
         
         # Barra de progreso
         prob_pct = min(1.0, projections[prob_key] / 100)
@@ -427,11 +428,11 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
         
         # Color según probabilidad
         if projections[prob_key] >= 75:
-            color_rgb = (112, 173, 71)  # Verde
+            color_rgb = RGBColor(112, 173, 71)  # Verde
         elif projections[prob_key] >= 50:
-            color_rgb = (255, 192, 0)   # Amarillo
+            color_rgb = RGBColor(255, 192, 0)   # Amarillo
         else:
-            color_rgb = (237, 125, 49)  # Naranja/Rojo
+            color_rgb = RGBColor(237, 125, 49)  # Naranja/Rojo
             
         progress_shape.fill.fore_color.rgb = color_rgb
         progress_shape.line.fill.background()  # Sin borde
@@ -501,8 +502,8 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
         for i in range(cols):
             cell = table.cell(0, i)
             cell.fill.solid()
-            cell.fill.fore_color.rgb = (0, 112, 192)  # Azul
-            cell.text_frame.paragraphs[0].font.color.rgb = (255, 255, 255)  # Texto blanco
+            cell.fill.fore_color.rgb = RGBColor(0, 112, 192)  # Azul
+            cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # Texto blanco
             cell.text_frame.paragraphs[0].font.bold = True
         
         # Datos
@@ -517,7 +518,7 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
                 for j in range(cols):
                     cell = table.cell(i, j)
                     cell.fill.solid()
-                    cell.fill.fore_color.rgb = (240, 240, 240)  # Gris muy claro
+                    cell.fill.fore_color.rgb = RGBColor(240, 240, 240)  # Gris muy claro
     else:
         content = slide.placeholders[1]
         tf = content.text_frame
@@ -562,8 +563,8 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
         for i in range(cols):
             cell = table.cell(0, i)
             cell.fill.solid()
-            cell.fill.fore_color.rgb = (192, 0, 0)  # Rojo
-            cell.text_frame.paragraphs[0].font.color.rgb = (255, 255, 255)  # Texto blanco
+            cell.fill.fore_color.rgb = RGBColor(192, 0, 0)  # Rojo
+            cell.text_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)  # Texto blanco
             cell.text_frame.paragraphs[0].font.bold = True
         
         # Datos
@@ -578,7 +579,7 @@ def generate_pptx(metrics, projections, program_analysis, comentarios, marca):
                 for j in range(cols):
                     cell = table.cell(i, j)
                     cell.fill.solid()
-                    cell.fill.fore_color.rgb = (240, 240, 240)  # Gris muy claro
+                    cell.fill.fore_color.rgb = RGBColor(240, 240, 240)  # Gris muy claro
     else:
         content = slide.placeholders[1]
         tf = content.text_frame
