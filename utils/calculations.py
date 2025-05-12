@@ -226,17 +226,26 @@ def analyze_programs(df_matriculados, df_leads, df_calendario):
     """Analizar programas para identificar los mejores y con oportunidades"""
     result = {}
     
-    # Crear un conjunto de todos los programas únicos presentes en los datos
-    # en lugar de usar solo el calendario
-    programas_marca = set(
-        list(df_matriculados['Programa'].unique()) + 
-        list(df_leads['Programa'].unique())
-    )
+    # Mejorado: Crear un conjunto de todos los programas únicos presentes en todos los datos disponibles
+    programas_marca = set()
     
-    # Si tenemos el calendario, podemos agregar esos programas también
-    if not df_calendario.empty:
+    # Agregar programas de los datos de matriculados
+    if not df_matriculados.empty and 'Programa' in df_matriculados.columns:
+        for programa in df_matriculados['Programa'].unique():
+            if pd.notna(programa) and programa != '':
+                programas_marca.add(programa)
+    
+    # Agregar programas de los datos de leads
+    if not df_leads.empty and 'Programa' in df_leads.columns:
+        for programa in df_leads['Programa'].unique():
+            if pd.notna(programa) and programa != '':
+                programas_marca.add(programa)
+    
+    # Agregar programas del calendario si está disponible
+    if not df_calendario.empty and 'Programa' in df_calendario.columns:
         for programa in df_calendario['Programa'].unique():
-            programas_marca.add(programa)
+            if pd.notna(programa) and programa != '' and programa != 'Todos los programas':
+                programas_marca.add(programa)
     
     # Convertir a lista para facilidad de uso
     programas_marca = list(programas_marca)
@@ -245,13 +254,20 @@ def analyze_programs(df_matriculados, df_leads, df_calendario):
     programas = []
     
     for programa in programas_marca:
-        leads = df_leads[df_leads['Programa'] == programa].shape[0]
-        matriculas = df_matriculados[df_matriculados['Programa'] == programa].shape[0]
+        # Contar leads y matrículas por programa, manejando casos donde podría no existir
+        leads = 0
+        if not df_leads.empty and 'Programa' in df_leads.columns:
+            leads = df_leads[df_leads['Programa'] == programa].shape[0]
+            
+        matriculas = 0
+        if not df_matriculados.empty and 'Programa' in df_matriculados.columns:
+            matriculas = df_matriculados[df_matriculados['Programa'] == programa].shape[0]
         
         # Evitar programas que no tienen datos (0 leads y 0 matrículas)
         if leads == 0 and matriculas == 0:
             continue
         
+        # Calcular tasa de conversión
         tasa_conversion = 0
         if leads > 0:
             tasa_conversion = (matriculas / leads) * 100
