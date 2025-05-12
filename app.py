@@ -11,105 +11,235 @@ from utils.report_generator import generate_excel, generate_pdf, generate_pptx
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Dashboard Marketing Educativo",
+    page_title="Dashboard Educativo",
     page_icon="📊",
     layout="wide"
 )
 
-# Estilos CSS personalizados - Minimalistas y profesionales
+# Estilos CSS personalizados para un diseño limpio
 st.markdown("""
 <style>
     /* Estilo general */
-    .main-container {
-        padding: 1rem;
+    body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        color: #333;
+        background-color: #f8f9fa;
     }
     
-    /* Tarjetas */
-    .card {
+    /* Secciones/Slides */
+    .slide {
         background-color: white;
-        border-radius: 10px;
-        padding: 20px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-        margin-bottom: 20px;
-        position: relative;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
-    .card-title {
+    
+    /* Encabezados de sección */
+    .slide-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+    
+    .slide-indicator {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        margin-right: 12px;
+        display: inline-block;
+    }
+    
+    .indicator-blue {
+        background-color: #2196F3;
+    }
+    
+    .indicator-purple {
+        background-color: #9C27B0;
+    }
+    
+    .indicator-yellow {
+        background-color: #FFC107;
+    }
+    
+    .slide-title {
         font-size: 22px;
-        font-weight: 600;
-        margin-bottom: 15px;
+        font-weight: 500;
         color: #333;
+        margin: 0;
     }
-    .card-metric {
-        font-size: 34px;
-        font-weight: 700;
-        color: #1E88E5;
+    
+    /* KPIs y métricas */
+    .kpi-container {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
     }
-    .card-metric-secondary {
-        font-size: 18px;
+    
+    .kpi-card {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        width: 32%;
+    }
+    
+    .kpi-title {
+        font-size: 14px;
+        font-weight: 500;
         color: #666;
+        margin-bottom: 10px;
     }
-    .card-value {
+    
+    .kpi-value {
         font-size: 28px;
         font-weight: 700;
+        color: #333;
         margin-bottom: 5px;
     }
-    .progress-bar-container {
-        height: 20px;
-        background-color: #f0f0f0;
-        border-radius: 10px;
-        margin: 5px 0 15px 0;
-        overflow: hidden;
-    }
-    .progress-bar {
-        height: 100%;
-        background-color: #1E88E5;
+    
+    .kpi-meta {
+        font-size: 14px;
+        color: #666;
     }
     
-    /* Gráficos */
-    .chart-container {
+    /* Barras de progreso */
+    .progress-container {
+        margin-bottom: 20px;
+    }
+    
+    .progress-label {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    
+    .progress-bar-bg {
+        background-color: #f0f0f0;
+        border-radius: 8px;
+        height: 20px;
+        overflow: hidden;
+    }
+    
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 8px;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-bar-fill-blue {
+        background-color: #2196F3;
+    }
+    
+    .progress-bar-fill-purple {
+        background-color: #9C27B0;
+    }
+    
+    .progress-bar-fill-yellow {
+        background-color: #FFC107;
+    }
+    
+    /* Observaciones y textos */
+    .observation-box {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
         margin-top: 20px;
     }
     
+    .observation-title {
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+    
     /* Tablas */
-    .styled-table {
+    .data-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 20px;
     }
-    .styled-table th {
+    
+    .data-table th {
         background-color: #f5f7f9;
-        padding: 10px;
+        padding: 12px;
         text-align: left;
         font-weight: 500;
-        color: #333;
     }
-    .styled-table td {
-        padding: 10px;
+    
+    .data-table td {
+        padding: 12px;
         border-bottom: 1px solid #f0f0f0;
     }
     
-    /* Observaciones */
-    .observation-item {
-        display: flex;
-        margin-bottom: 10px;
+    /* Proyección central */
+    .projection-central {
+        text-align: center;
+        padding: 30px;
     }
-    .observation-bullet {
-        margin-right: 10px;
-        color: #1E88E5;
+    
+    .projection-value {
+        font-size: 56px;
+        font-weight: 700;
+        color: #9C27B0;
+        margin-bottom: 0;
+    }
+    
+    .projection-label {
+        font-size: 18px;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    .projection-interval {
+        font-size: 16px;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    /* Estado visual */
+    .status-indicator {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 16px;
+        font-weight: 500;
+        font-size: 14px;
+    }
+    
+    .status-on-track {
+        background-color: #E8F5E9;
+        color: #388E3C;
+    }
+    
+    .status-behind {
+        background-color: #FFEBEE;
+        color: #D32F2F;
+    }
+    
+    .status-just-in-time {
+        background-color: #FFF8E1;
+        color: #FFA000;
     }
     
     /* Ocultar elementos de Streamlit */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    header {visibility: hidden;}
     .stDeployButton {display:none;}
     
-    /* Adaptaciones específicas para parecerse al ejemplo */
-    h1, h2, h3 {
-        font-weight: 600 !important;
-        color: #333 !important;
+    /* Ajustes responsivos */
+    @media (max-width: 768px) {
+        .kpi-container {
+            flex-direction: column;
+        }
+        .kpi-card {
+            width: 100%;
+            margin-bottom: 10px;
+        }
     }
+    
+    /* Eliminar márgenes de streamlit */
     .block-container {
         padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
     }
     .main .block-container {
         max-width: 100% !important;
@@ -119,91 +249,127 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Funciones para generar componentes UI personalizados
-def create_dashboard_card(title, value, subtitle=None, percentage=None, color="#1E88E5"):
-    """Crear una tarjeta de dashboard similar al ejemplo"""
-    
-    percentage_html = ""
-    if percentage is not None:
-        percentage_color = "green" if float(percentage.rstrip("%")) >= 50 else "red"
-        percentage_html = f'<span style="color: {percentage_color}; font-size: 18px;">({percentage})</span>'
-    
-    subtitle_html = f'<div class="card-metric-secondary">{subtitle}</div>' if subtitle else ''
+# Funciones para componentes UI
+def create_slide_header(title, color):
+    """Crear el encabezado de una sección/slide"""
+    indicator_class = {
+        "blue": "indicator-blue",
+        "purple": "indicator-purple",
+        "yellow": "indicator-yellow"
+    }.get(color, "indicator-blue")
     
     html = f"""
-    <div class="card">
-        <div class="card-title">{title}</div>
-        <div class="card-metric" style="color: {color};">{value} {percentage_html}</div>
-        {subtitle_html}
+    <div class="slide-header">
+        <div class="slide-indicator {indicator_class}"></div>
+        <h2 class="slide-title">{title}</h2>
     </div>
     """
     return st.markdown(html, unsafe_allow_html=True)
 
-def create_progress_bar(current, total, label=None):
-    """Crear barra de progreso personalizada"""
+def create_kpi_card(title, value, meta=None):
+    """Crear una tarjeta KPI"""
+    meta_html = f'<div class="kpi-meta">{meta}</div>' if meta else ''
+    
+    html = f"""
+    <div class="kpi-card">
+        <div class="kpi-title">{title}</div>
+        <div class="kpi-value">{value}</div>
+        {meta_html}
+    </div>
+    """
+    return html
+
+def create_progress_bar(label, current, total, current_text="", color="blue"):
+    """Crear una barra de progreso personalizada"""
     percent = min(100, int((current / max(1, total)) * 100))
-    
-    label_html = f'<div style="margin-bottom: 5px; font-weight: 500;">{label}</div>' if label else ''
+    color_class = f"progress-bar-fill-{color}"
     
     html = f"""
-    <div style="margin-bottom: 15px;">
-        {label_html}
-        <div class="progress-bar-container">
-            <div class="progress-bar" style="width: {percent}%;"></div>
+    <div class="progress-container">
+        <div class="progress-label">
+            <span>{label}</span>
+            <span>{current_text} ({percent}%)</span>
         </div>
-        <div style="display: flex; justify-content: space-between;">
-            <span style="font-size: 14px; color: #666;">0</span>
-            <span style="font-size: 14px; font-weight: 500;">{current}/{total} ({percent}%)</span>
-            <span style="font-size: 14px; color: #666;">{total}</span>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill {color_class}" style="width: {percent}%;"></div>
         </div>
     </div>
     """
-    return st.markdown(html, unsafe_allow_html=True)
+    return html
 
-def create_observation_list(observations):
-    """Crear lista de observaciones con viñetas"""
-    html = '<div style="margin: 15px 0;">'
+def create_status_indicator(status):
+    """Crear indicador de estado"""
+    if status == "on_track":
+        class_name = "status-on-track"
+        text = "En ritmo"
+    elif status == "behind":
+        class_name = "status-behind"
+        text = "Retrasado"
+    else:  # just_in_time
+        class_name = "status-just-in-time"
+        text = "Justo"
     
-    for obs in observations:
-        html += f"""
-        <div class="observation-item">
-            <div class="observation-bullet">•</div>
-            <div>{obs}</div>
-        </div>
-        """
+    html = f'<span class="status-indicator {class_name}">{text}</span>'
+    return html
+
+def create_observation_box(title, text):
+    """Crear caja de observación"""
+    html = f"""
+    <div class="observation-box">
+        <div class="observation-title">{title}</div>
+        <div>{text}</div>
+    </div>
+    """
+    return html
+
+def create_data_table(headers, rows):
+    """Crear tabla de datos"""
+    html = '<table class="data-table">\n<thead>\n<tr>'
     
-    html += '</div>'
-    return st.markdown(html, unsafe_allow_html=True)
+    # Encabezados
+    for header in headers:
+        html += f'<th>{header}</th>'
+    html += '</tr>\n</thead>\n<tbody>'
+    
+    # Filas
+    for row in rows:
+        html += '<tr>'
+        for cell in row:
+            html += f'<td>{cell}</td>'
+        html += '</tr>'
+    
+    html += '</tbody>\n</table>'
+    return html
+
+# Cargar datos
+# Sidebar para configuración
+st.sidebar.title("Configuración")
 
 # Selector de marca
 marcas = ["GRADO", "POSGRADO", "ADVANCE", "WIZARD", "AJA", "UNISUD"]
 selected_marca = st.sidebar.selectbox("Seleccionar Marca", marcas)
 
-# Cargar datos
-usar_demo = st.sidebar.button("Usar Datos de Ejemplo")
+# Opción para usar datos de ejemplo
+usar_demo = st.sidebar.checkbox("Usar datos de ejemplo", value=True)
 
+# Configurar objetivo y fechas
+objetivo_matriculas = st.sidebar.number_input("Objetivo de Matrículas", min_value=1, value=120)
+
+# Cargar datos (de ejemplo o reales)
 if usar_demo:
     # Generar datos de demo
     from utils.data_generator import generate_demo_data
     df_matriculados, df_leads, df_plan_mensual, df_inversion, df_calendario = generate_demo_data(selected_marca)
     
-    # Configurar objetivo de matrículas
-    objetivo_matriculas = 120
-    
     # Mensaje de datos de ejemplo
     st.sidebar.success("Usando datos de ejemplo")
 else:
-    # Espacio para cargar archivos
-    st.sidebar.markdown("### Carga de Archivos")
-    
+    # Cargar archivos
     matriculados_file = st.sidebar.file_uploader(f"Matriculados - {selected_marca}", type=["xlsx"])
     leads_file = st.sidebar.file_uploader(f"Leads Activos - {selected_marca}", type=["xlsx"])
     planificacion_file = st.sidebar.file_uploader(f"Planificación (opcional)", type=["xlsx"])
     
-    # Configurar objetivo de matrículas
-    objetivo_matriculas = st.sidebar.number_input("Objetivo de Matrículas", min_value=1, value=120)
-    
-    # Salir si no hay archivos
+    # Salir si no hay archivos necesarios
     if not (matriculados_file and leads_file):
         st.info("Por favor, carga los archivos necesarios o usa los datos de ejemplo.")
         st.stop()
@@ -262,99 +428,85 @@ metrics = calculate_metrics(marca_matriculados, marca_leads, marca_calendario, m
 projections = project_results(metrics, marca_inversion, selected_marca)
 program_analysis = analyze_programs(marca_matriculados, marca_leads, marca_calendario)
 
-# Observaciones según resultados
-observaciones = []
-if metrics['matriculas_acumuladas'] / objetivo_matriculas >= 0.6:
-    observaciones.append("Ratamos dentro del ritmo planificado.")
+# Calcular valores adicionales para el dashboard
+pct_objetivo = (metrics['matriculas_acumuladas'] / objetivo_matriculas) * 100
+pct_tiempo = metrics['tiempo_transcurrido'] if metrics['tiempo_transcurrido'] is not None else 50
+if 'leads_proyectados' in projections:
+    leads_estimados = projections['leads_proyectados'] + metrics['leads_acumulados']
 else:
-    observaciones.append("Estamos por debajo del ritmo necesario.")
+    leads_estimados = int(metrics['leads_acumulados'] * 1.5)
+pct_leads = (metrics['leads_acumulados'] / leads_estimados) * 100
 
-if projections['pct_cumplimiento_proyectado'] >= 90:
-    observaciones.append("Priproyecta el logro de meta sobre base de remarketing.")
+# Determinar el estado basado en las métricas
+if pct_objetivo >= pct_tiempo - 5:
+    status = "on_track"  # En ritmo
+elif pct_objetivo >= pct_tiempo - 15:
+    status = "just_in_time"  # Justo
 else:
-    observaciones.append("Necesario intensificar acciones para cumplir la meta.")
+    status = "behind"  # Retrasado
 
-observaciones.append("Refuerce contacto sobre leads activos.")
+# CONTENIDO PRINCIPAL DEL DASHBOARD
+st.title(f"Dashboard {selected_marca}")
 
-# ------- DASHBOARD PRINCIPAL -------
-# Título del Dashboard
-st.markdown(f"<h1 style='margin-bottom: 20px;'>Dashboard Principal - {selected_marca}</h1>", unsafe_allow_html=True)
+# ---------------------------------------
+# SECCIÓN 1: ESTADO ACTUAL / RITMO DE AVANCE
+# ---------------------------------------
+st.markdown('<div class="slide">', unsafe_allow_html=True)
+create_slide_header("ESTADO ACTUAL / RITMO DE AVANCE", "blue")
 
-# Primera sección: KPIs principales
-col1, col2 = st.columns([2, 3])
+# KPIs destacados
+kpi_html = f"""
+<div class="kpi-container">
+    {create_kpi_card("Matrículas", f"{metrics['matriculas_acumuladas']} / {objetivo_matriculas}", f"{pct_objetivo:.1f}% de meta")}
+    {create_kpi_card("Leads", f"{metrics['leads_acumulados']} / {leads_estimados}", f"{pct_leads:.1f}% de estimados")}
+    {create_kpi_card("Tiempo Transcurrido", f"{pct_tiempo:.1f}%", "de la campaña")}
+</div>
+"""
+st.markdown(kpi_html, unsafe_allow_html=True)
 
-with col1:
-    # Tarjeta de matrículas
-    matriculas_valor = f"{metrics['matriculas_acumuladas']} / {objetivo_matriculas}"
-    matriculas_porcentaje = f"{(metrics['matriculas_acumuladas']/objetivo_matriculas*100):.0f}%"
-    create_dashboard_card("Matrículas:", matriculas_valor, percentage=matriculas_porcentaje)
-    
-    # Tarjeta de leads
-    create_dashboard_card("Leads:", f"{metrics['leads_acumulados']:,}", color="#4CAF50")
-    
-    # Tarjeta de conversión
-    create_dashboard_card("Conversión:", f"{metrics['tasa_conversion']:.1f}%", color="#FF9800")
-    
-    # Observaciones
-    st.markdown("<h3 style='margin-top: 20px;'>Observaciones</h3>", unsafe_allow_html=True)
-    create_observation_list(observaciones)
+# Barras horizontales de progreso
+progress_html = f"""
+<div style="margin-top: 30px;">
+    {create_progress_bar("Tiempo transcurrido", pct_tiempo, 100, f"{pct_tiempo:.1f}%", "blue")}
+    {create_progress_bar("Leads acumulados", metrics['leads_acumulados'], leads_estimados, f"{metrics['leads_acumulados']} de {leads_estimados}", "blue")}
+    {create_progress_bar("Matrículas confirmadas", metrics['matriculas_acumuladas'], objetivo_matriculas, f"{metrics['matriculas_acumuladas']} de {objetivo_matriculas}", "blue")}
+</div>
+"""
+st.markdown(progress_html, unsafe_allow_html=True)
 
-with col2:
-    # Gráfico de barras para leads y matrículas
-    fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Datos simplificados como en el ejemplo
-    categorias = ['LEADS\nESTIMADOS', 'LEADS\nACUMULADOS', 'MATRÍCULAS']
-    
-    # Valores estimados vs reales
-    if 'leads_proyectados' in projections:
-        leads_estimados = projections['leads_proyectados'] + metrics['leads_acumulados']
-    else:
-        leads_estimados = int(metrics['leads_acumulados'] * 1.5)  # Valor aproximado si no hay proyección
-        
-    valores = [leads_estimados, metrics['leads_acumulados'], metrics['matriculas_acumuladas']]
-    
-    # Colores como en el ejemplo (tonos de azul)
-    colores = ['#90CAF9', '#2196F3', '#1565C0']
-    
-    # Crear barras
-    bars = ax.bar(categorias, valores, color=colores, width=0.6)
-    
-    # Añadir porcentajes dentro de las barras (solo para matrículas)
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height/2,
-                f"{(valores[i]/valores[0]*100):.0f}%" if i > 0 else "",
-                ha='center', va='center', color='white', fontweight='bold')
-    
-    # Añadir valores arriba de las barras
-    for i, bar in enumerate(bars):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
-                f"{int(height):,}", ha='center', va='bottom', fontweight='bold')
-    
-    # Añadir línea horizontal para el objetivo
-    ax.axhline(y=objetivo_matriculas, color='#FF5722', linestyle='--', linewidth=2)
-    ax.text(len(categorias)-1, objetivo_matriculas + objetivo_matriculas*0.05, 
-            f"Objetivo: {objetivo_matriculas}", ha='right', color='#FF5722', fontweight='bold')
-    
-    # Configuración del gráfico
-    ax.set_ylim(0, max(valores + [objetivo_matriculas]) * 1.15)  # Espacio para etiquetas
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.set_yticks([])  # Quitar escala vertical para un look más limpio
-    
-    # Mostrar el gráfico
-    st.pyplot(fig)
+# Indicador visual de estado
+status_html = f"""
+<div style="margin-top: 30px;">
+    <strong>Estado:</strong> {create_status_indicator(status)}
+</div>
+"""
+st.markdown(status_html, unsafe_allow_html=True)
 
-# ------- SEGUNDA SECCIÓN - ESTIMACIÓN DE RESULTADOS -------
-st.markdown("<h2 style='margin-top: 40px; margin-bottom: 20px;'>Estimación de Resultados</h2>", unsafe_allow_html=True)
+# Observación estratégica
+observacion_texto = ""
+if status == "on_track":
+    observacion_texto = "El ritmo actual sostiene la meta. No se requieren ajustes."
+elif status == "just_in_time":
+    observacion_texto = "El ritmo está justo para alcanzar la meta. Se recomienda vigilar conversión."
+else:
+    observacion_texto = "El ritmo actual no alcanzará la meta. Se requieren ajustes en la estrategia."
 
+observation_html = create_observation_box("Observación estratégica", observacion_texto)
+st.markdown(observation_html, unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------------------------------------
+# SECCIÓN 2: PROYECCIÓN A CIERRE
+# ---------------------------------------
+st.markdown('<div class="slide">', unsafe_allow_html=True)
+create_slide_header("PROYECCIÓN A CIERRE", "purple")
+
+# Distribuir contenido en dos columnas
 col1, col2 = st.columns([3, 2])
 
 with col1:
-    # Gráfico de proyección simplificado
+    # Visual de proyección
     fig, ax = plt.subplots(figsize=(10, 5))
     
     # Datos para proyección
@@ -363,186 +515,220 @@ with col1:
     percentil_05 = projections['matriculas_proyectadas_min']
     percentil_95 = projections['matriculas_proyectadas_max']
     
-    # Crear curva suavizada en lugar de histograma
+    # Crear visualización simplificada
     import scipy.stats as stats
-    x = np.linspace(min(simulacion), max(simulacion), 100)
-    kde = stats.gaussian_kde(simulacion)
-    y = kde(x)
+    x = np.linspace(min(simulacion) * 0.9, max(simulacion) * 1.1, 100)
+    
+    try:
+        # Verificar si hay suficiente variación en los datos
+        if len(np.unique(simulacion)) <= 1:
+            # Si todos los valores son iguales, crear una distribución artificial
+            y = np.zeros_like(x)
+            idx = np.abs(x - matriculas_mean).argmin()  # índice más cercano al valor medio
+            y[idx] = 1.0  # Poner un pico en el valor medio
+            
+            # Suavizar ligeramente para visualización
+            from scipy.ndimage import gaussian_filter1d
+            y = gaussian_filter1d(y, sigma=2)
+        else:
+            # Intentar añadir pequeña variación si los datos son muy similares
+            if np.std(simulacion) < 0.01:
+                # Añadir pequeño ruido aleatorio
+                noise = np.random.normal(0, 0.01, size=len(simulacion))
+                simulacion_adj = simulacion + noise
+                kde = stats.gaussian_kde(simulacion_adj)
+            else:
+                # Usar KDE normal si hay suficiente variación
+                kde = stats.gaussian_kde(simulacion)
+            
+            y = kde(x)
+    
+    except np.linalg.LinAlgError:
+        # Método alternativo sin KDE si falla
+        y = np.zeros_like(x)
+        hist, bin_edges = np.histogram(simulacion, bins=20, density=True)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        
+        # Interpolar histograma para crear curva suave
+        from scipy.interpolate import interp1d
+        if len(bin_centers) > 3:  # Necesitamos al menos algunos puntos para interpolar
+            f = interp1d(bin_centers, hist, kind='quadratic', bounds_error=False, fill_value=0)
+            y = f(x)
+        else:
+            # Fallback simple si no hay suficientes puntos
+            idx = np.abs(x - matriculas_mean).argmin()
+            y[max(0, idx-5):min(len(y), idx+5)] = 0.2
     
     # Área bajo la curva
-    ax.fill_between(x, y, color='#E3F2FD', alpha=0.7)
-    ax.plot(x, y, color='#2196F3', linewidth=2)
+    ax.fill_between(x, y, color='#E8EAF6', alpha=0.7)
+    ax.plot(x, y, color='#9C27B0', linewidth=2)
     
     # Línea para el valor esperado
-    ax.axvline(x=matriculas_mean, color='#0D47A1', linestyle='-', linewidth=2)
+    ax.axvline(x=matriculas_mean, color='#7B1FA2', linestyle='-', linewidth=2)
     
     # Línea para el objetivo
-    if objective_reached := (matriculas_mean >= objetivo_matriculas):
-        color_objetivo = '#4CAF50'  # Verde si se alcanza
-    else:
-        color_objetivo = '#F44336'  # Rojo si no se alcanza
-        
-    ax.axvline(x=objetivo_matriculas, color=color_objetivo, linestyle='--', linewidth=2)
+    ax.axvline(x=objetivo_matriculas, color='#4CAF50' if matriculas_mean >= objetivo_matriculas else '#F44336', 
+               linestyle='--', linewidth=2)
     
-    # Eliminar ejes para un look más limpio
+    # Configuración visual limpia
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.set_yticks([])
-    
-    # Etiquetas en puntos clave
-    ax.text(matriculas_mean, max(y)*1.05, f"{int(matriculas_mean)}", 
-            ha='center', va='bottom', color='#0D47A1', fontweight='bold')
-    ax.text(objetivo_matriculas, max(y)*0.8, f"Meta: {objetivo_matriculas}", 
-            ha='center', va='bottom', color=color_objetivo, fontweight='bold')
-    
-    # Título del gráfico
-    ax.set_title("ESPROYECTÓ LOS LOGRO DE META", fontsize=14, fontweight='bold', pad=20)
+    ax.set_xticks([objetivo_matriculas, int(matriculas_mean)])
+    ax.set_xticklabels([f'Meta: {objetivo_matriculas}', f'Proyección: {int(matriculas_mean)}'])
     
     # Mostrar gráfico
     st.pyplot(fig)
-    
-    # Valor grande para matrículas totales proyectadas
-    st.markdown(f"""
-    <div style="text-align: center; margin-top: 10px;">
-        <div style="font-size: 48px; font-weight: 700; color: #1E88E5;">{int(matriculas_mean)}</div>
-        <div style="font-size: 18px; color: #666;">MATRÍCULAS</div>
-        <div style="font-size: 14px; color: #666;">(IC: {percentil_05}-{percentil_95})</div>
-    </div>
-    """, unsafe_allow_html=True)
 
 with col2:
-    # Contenido de la tarjeta de estimación
-    st.markdown("""
-    <div class="card">
-        <div style="margin-bottom: 15px;">
-            <div style="color: #1E88E5; font-weight: 500;">Estimación de Resursos</div>
-        </div>
+    # Proyección central
+    st.markdown(f"""
+    <div class="projection-central">
+        <div class="projection-value">{int(matriculas_mean)}</div>
+        <div class="projection-label">MATRÍCULAS</div>
+        <div class="projection-interval">Intervalo de confianza: {percentil_05} – {percentil_95}</div>
+    </div>
     """, unsafe_allow_html=True)
     
-    # Recomendaciones según los resultados
-    recomendaciones = [
-        "Continuar con captacion efectiva.",
-        "Se proyecta el logro de la meta.",
-        "Continuar captración effective de meta."
-    ]
-    
-    create_observation_list(recomendaciones)
-    
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Texto lateral breve
+    st.markdown(create_observation_box("Metodología de proyección", 
+                "La proyección se basa en el rendimiento actual acumulado, aplicando simulación Monte Carlo sobre las tendencias de conversión históricas."), 
+                unsafe_allow_html=True)
 
-# ------- TERCERA SECCIÓN - DISTRIBUCIÓN DE RESULTADOS -------
-st.markdown(f"<h2 style='margin-top: 40px; margin-bottom: 20px;'>Distribución de Resultados - {selected_marca}</h2>", unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Tabla de Top Programas
+# ---------------------------------------
+# SECCIÓN 3: DISTRIBUCIÓN DE RESULTADOS POR PROGRAMA
+# ---------------------------------------
+st.markdown('<div class="slide">', unsafe_allow_html=True)
+create_slide_header("DISTRIBUCIÓN DE RESULTADOS POR PROGRAMA", "yellow")
+
+# Preparar datos para tablas
 if 'top_matriculas' in program_analysis and not program_analysis['top_matriculas'].empty:
+    # Top 5 programas con más matrículas
+    top_matriculas = program_analysis['top_matriculas'].head(5)
+    top_matriculas_rows = []
+    for _, row in top_matriculas.iterrows():
+        top_matriculas_rows.append([
+            row['Programa'],
+            int(row['Leads']),
+            int(row['Matrículas']),
+            f"{row['Tasa Conversión (%)']:.1f}%"
+        ])
+    
+    # Top 5 programas con menor conversión
+    programas_menor_conversion = program_analysis['menor_conversion'].head(5)
+    menor_conversion_rows = []
+    for _, row in programas_menor_conversion.iterrows():
+        menor_conversion_rows.append([
+            row['Programa'],
+            int(row['Leads']),
+            int(row['Matrículas']),
+            f"{row['Tasa Conversión (%)']:.1f}%"
+        ])
+    
+    # Mostrar tablas en dos columnas
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("<h3>Top Programas</h3>", unsafe_allow_html=True)
-        
-        # Datos de programas
-        programas_data = program_analysis['top_matriculas'].head(5)
-        
-        # Crear tabla HTML para mayor control sobre el estilo
-        html_table = """
-        <table class="styled-table" style="width:100%">
-            <tr>
-                <th>Programa</th>
-                <th style="text-align:center">volumen</th>
-                <th style="text-align:center">$$</th>
-            </tr>
-        """
-        
-        for _, row in programas_data.iterrows():
-            html_table += f"""
-            <tr>
-                <td>{row['Programa']}</td>
-                <td style="text-align:center">{int(row['Leads'])}</td>
-                <td style="text-align:center">{int(row['Matrículas'])}</td>
-            </tr>
-            """
-        
-        html_table += "</table>"
-        st.markdown(html_table, unsafe_allow_html=True)
+        st.subheader("Top 5 programas con más matrículas")
+        top_table = create_data_table(
+            ["Programa", "Leads", "Matrículas", "Conversión"],
+            top_matriculas_rows
+        )
+        st.markdown(top_table, unsafe_allow_html=True)
     
     with col2:
-        st.markdown("<h3>Top Programas</h3>", unsafe_allow_html=True)
+        st.subheader("Top 5 programas con menor conversión")
+        bottom_table = create_data_table(
+            ["Programa", "Leads", "Matrículas", "Conversión"],
+            menor_conversion_rows
+        )
+        st.markdown(bottom_table, unsafe_allow_html=True)
+    
+    # Opción para ver tabla completa
+    with st.expander("Ver tabla completa de programas"):
+        # Preparar datos para tabla completa
+        tabla_completa = program_analysis['tabla_completa']
+        tabla_completa_rows = []
+        for _, row in tabla_completa.iterrows():
+            # Determinar clasificación
+            if row['Tasa Conversión (%)'] > 15:
+                clasificacion = "Excelente conversión"
+            elif row['Tasa Conversión (%)'] < 5 and row['Leads'] > 10:
+                clasificacion = "Bajo rendimiento"
+            else:
+                clasificacion = "Normal"
+            
+            tabla_completa_rows.append([
+                row['Programa'],
+                int(row['Leads']),
+                int(row['Matrículas']),
+                f"{row['Tasa Conversión (%)']:.1f}%",
+                clasificacion
+            ])
         
-        # Ordenar por tasa de conversión
-        programas_por_conversion = program_analysis['tabla_completa'].copy()
-        programas_por_conversion = programas_por_conversion[programas_por_conversion['Leads'] >= 5].sort_values('Tasa Conversión (%)', ascending=False).head(5)
-        
-        # Crear tabla HTML para mayor control sobre el estilo
-        html_table = """
-        <table class="styled-table" style="width:100%">
-            <tr>
-                <th>Programa</th>
-                <th style="text-align:center">$$</th>
-                <th style="text-align:center">Conversion</th>
-            </tr>
-        """
-        
-        for _, row in programas_por_conversion.iterrows():
-            html_table += f"""
-            <tr>
-                <td>{row['Programa']}</td>
-                <td style="text-align:center">{int(row['Matrículas'])}</td>
-                <td style="text-align:center">{row['Tasa Conversión (%)']:.1f}%</td>
-            </tr>
-            """
-        
-        html_table += "</table>"
-        st.markdown(html_table, unsafe_allow_html=True)
+        # Mostrar tabla completa
+        complete_table = create_data_table(
+            ["Programa", "Leads", "Matrículas", "Conversión", "Clasificación"],
+            tabla_completa_rows
+        )
+        st.markdown(complete_table, unsafe_allow_html=True)
+    
+    # Insight al pie
+    insights = []
+    # Detectar programas con buena conversión pero pocos leads
+    buena_conversion = tabla_completa[(tabla_completa['Tasa Conversión (%)'] > 15) & (tabla_completa['Leads'] < 50)]
+    if not buena_conversion.empty:
+        programas = ", ".join(buena_conversion['Programa'].head(3).tolist())
+        insights.append(f"Programas con excelente conversión pero poca inversión ({programas}): oportunidad de escalar.")
+    
+    # Detectar programas con muchos leads pero baja conversión
+    baja_conversion = tabla_completa[(tabla_completa['Tasa Conversión (%)'] < 5) & (tabla_completa['Leads'] > 100)]
+    if not baja_conversion.empty:
+        programas = ", ".join(baja_conversion['Programa'].head(3).tolist())
+        insights.append(f"Programas con alta inversión pero baja conversión ({programas}): revisar propuesta de valor.")
+    
+    # Si no hay insights específicos, añadir uno general
+    if not insights:
+        insights.append("Algunos programas muestran oportunidades de optimización y balance en la inversión.")
+    
+    # Mostrar insights
+    insight_html = create_observation_box("Insight estratégico", insights[0])
+    st.markdown(insight_html, unsafe_allow_html=True)
 else:
-    st.info("No hay suficientes datos para mostrar la distribución por programas.")
+    st.info("No hay datos suficientes para mostrar la distribución por programas.")
 
-# ------- CONFIGURACIÓN EN SIDEBAR -------
-st.sidebar.markdown("### Herramientas")
+st.markdown('</div>', unsafe_allow_html=True)
 
-# Observaciones personalizables
-with st.sidebar.expander("Editar Observaciones", expanded=False):
-    # Inicializar observaciones en session_state si no existen
-    if 'observaciones_customizadas' not in st.session_state:
-        st.session_state.observaciones_customizadas = observaciones.copy()
-    
-    # Campo para cada observación
-    for i in range(len(st.session_state.observaciones_customizadas)):
-        st.session_state.observaciones_customizadas[i] = st.text_input(
-            f"Observación {i+1}", 
-            value=st.session_state.observaciones_customizadas[i],
-            key=f"obs_{i}"
-        )
-    
-    # Botón para añadir nueva observación
-    if st.button("Añadir Observación") and len(st.session_state.observaciones_customizadas) < 5:
-        st.session_state.observaciones_customizadas.append("")
-        st.experimental_rerun()
+# ---------------------------------------
+# HERRAMIENTAS DE EXPORTACIÓN
+# ---------------------------------------
+st.sidebar.markdown("### Exportar Reporte")
 
-# Exportar reportes
-with st.sidebar.expander("Exportar Reporte", expanded=False):
-    # Texto para comentarios
-    comentarios = st.text_area("Comentarios adicionales", height=100)
-    
-    # Botones de exportación
-    col1, col2 = st.columns(2)
-    
-    try:
-        excel_buffer = generate_excel(metrics, projections, program_analysis, comentarios, selected_marca)
-        col1.download_button(
-            "Excel", excel_buffer,
-            file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.ms-excel"
-        )
-    except:
-        col1.warning("Error Excel")
-    
-    try:
-        pptx_buffer = generate_pptx(metrics, projections, program_analysis, comentarios, selected_marca)
-        col2.download_button(
-            "PowerPoint", pptx_buffer,
-            file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        )
-    except:
-        col2.warning("Error PPTX") 
+# Texto para comentarios
+comentarios = st.sidebar.text_area("Comentarios adicionales", height=100)
+
+# Botones de exportación
+col1, col2 = st.sidebar.columns(2)
+
+try:
+    excel_buffer = generate_excel(metrics, projections, program_analysis, comentarios, selected_marca)
+    col1.download_button(
+        "Descargar Excel", excel_buffer,
+        file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.ms-excel"
+    )
+except:
+    col1.warning("Error Excel")
+
+try:
+    pdf_buffer = generate_pdf(metrics, projections, program_analysis, comentarios, selected_marca)
+    col2.download_button(
+        "Descargar PDF", pdf_buffer,
+        file_name=f"reporte_{selected_marca}_{datetime.now().strftime('%Y%m%d')}.pdf",
+        mime="application/pdf"
+    )
+except:
+    col2.warning("Error PDF") 
