@@ -304,7 +304,7 @@ if st.button("📋 Mostrar/Ocultar Panel de Configuración"):
         st.sidebar.markdown("### Panel de Configuración Visible")
     else:
         st.sidebar.markdown("### Panel de Configuración Oculto")
-    st.experimental_rerun()
+    st.rerun()
 
 # Funciones para componentes UI
 def create_slide_header(title, color):
