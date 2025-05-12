@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import io
 from datetime import datetime
 from fpdf import FPDF
-import xlsxwriter
+import base64
 
 # Configuración de la página
 st.set_page_config(
@@ -63,9 +63,8 @@ if 'kpi_data' not in st.session_state:
 
 if 'proyeccion_data' not in st.session_state:
     st.session_state.proyeccion_data = {
-        'valor': 110,
-        'min': 95,
-        'max': 125
+        'matriculas': 110,
+        'leads': 1500
     }
 
 if 'programas_data' not in st.session_state:
@@ -90,9 +89,222 @@ if 'titulo_reporte' not in st.session_state:
 if 'observaciones' not in st.session_state:
     st.session_state.observaciones = {
         'estado_actual': "El ritmo actual de matrículas está ligeramente por debajo de lo esperado.",
-        'proyeccion': "Se proyecta alcanzar el objetivo con una probabilidad del 75%.",
+        'proyeccion': "Se proyecta alcanzar el objetivo con un buen ritmo de conversión.",
         'programas': "Los programas de Administración y Derecho muestran el mejor rendimiento."
     }
+
+# Funciones para exportación
+def generate_excel():
+    """Genera un reporte en formato Excel"""
+    buffer = io.BytesIO()
+    writer = pd.ExcelWriter(buffer, engine='xlsxwriter')
+    
+    # Hoja 1: Resumen General
+    df_resumen = pd.DataFrame({
+        'Métrica': [
+            'Título del Reporte',
+            'Matrículas Actuales',
+            'Objetivo de Matrículas',
+            'Leads Actuales',
+            'Objetivo de Leads',
+            'Tiempo Transcurrido',
+            'Matrículas Proyectadas',
+            'Leads Proyectados'
+        ],
+        'Valor': [
+            st.session_state.titulo_reporte,
+            st.session_state.kpi_data['matriculas']['actual'],
+            st.session_state.kpi_data['matriculas']['objetivo'],
+            st.session_state.kpi_data['leads']['actual'],
+            st.session_state.kpi_data['leads']['objetivo'],
+            f"{st.session_state.kpi_data['tiempo']['valor']}%",
+            st.session_state.proyeccion_data['matriculas'],
+            st.session_state.proyeccion_data['leads']
+        ]
+    })
+    df_resumen.to_excel(writer, sheet_name='Resumen', index=False)
+    
+    # Hoja 2: Observaciones
+    df_obs = pd.DataFrame({
+        'Sección': [
+            'Estado Actual',
+            'Proyección', 
+            'Programas'
+        ],
+        'Observación': [
+            st.session_state.observaciones['estado_actual'],
+            st.session_state.observaciones['proyeccion'],
+            st.session_state.observaciones['programas']
+        ]
+    })
+    df_obs.to_excel(writer, sheet_name='Observaciones', index=False)
+    
+    # Hoja 3: Datos de Programas
+    df_programas = pd.DataFrame(st.session_state.programas_data)
+    df_programas.to_excel(writer, sheet_name='Programas', index=False)
+    
+    # Dar formato
+    workbook = writer.book
+    
+    # Formato para título
+    header_format = workbook.add_format({
+        'bold': True,
+        'bg_color': '#2196F3',
+        'font_color': 'white',
+        'border': 1
+    })
+    
+    # Aplicar formato a las hojas
+    for sheet_name in writer.sheets:
+        worksheet = writer.sheets[sheet_name]
+        # Ajustar ancho de columnas
+        worksheet.set_column('A:A', 25)
+        worksheet.set_column('B:D', 18)
+        
+        # Formato para encabezados
+        for col_num, value in enumerate(df_resumen.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+    
+    writer.close()
+    buffer.seek(0)
+    return buffer
+
+def generate_pdf():
+    """Genera un reporte en formato PDF"""
+    class PDF(FPDF):
+        def header(self):
+            # Título del documento
+            self.set_font('Arial', 'B', 15)
+            self.cell(0, 10, st.session_state.titulo_reporte, 0, 1, 'C')
+            self.ln(10)
+        
+        def footer(self):
+            # Pie de página
+            self.set_y(-15)
+            self.set_font('Arial', 'I', 8)
+            self.cell(0, 10, f'Página {self.page_no()}', 0, 0, 'C')
+    
+    pdf = PDF()
+    pdf.add_page()
+    
+    # Sección 1: ESTADO ACTUAL / RITMO DE AVANCE
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_fill_color(33, 150, 243)  # Color azul
+    pdf.cell(0, 10, 'ESTADO ACTUAL / RITMO DE AVANCE', 0, 1, 'L', 1)
+    pdf.ln(5)
+    
+    pdf.set_font('Arial', '', 11)
+    # Tabla de KPIs
+    pdf.cell(50, 10, 'Métricas', 1)
+    pdf.cell(35, 10, 'Actual', 1)
+    pdf.cell(35, 10, 'Objetivo', 1)
+    pdf.cell(35, 10, 'Porcentaje', 1)
+    pdf.ln()
+    
+    # Datos de Matrículas
+    m_actual = st.session_state.kpi_data['matriculas']['actual']
+    m_objetivo = st.session_state.kpi_data['matriculas']['objetivo']
+    m_porcentaje = min(100, int((m_actual / max(1, m_objetivo)) * 100))
+    
+    pdf.cell(50, 10, 'Matrículas', 1)
+    pdf.cell(35, 10, str(m_actual), 1)
+    pdf.cell(35, 10, str(m_objetivo), 1)
+    pdf.cell(35, 10, f"{m_porcentaje}%", 1)
+    pdf.ln()
+    
+    # Datos de Leads
+    l_actual = st.session_state.kpi_data['leads']['actual']
+    l_objetivo = st.session_state.kpi_data['leads']['objetivo']
+    l_porcentaje = min(100, int((l_actual / max(1, l_objetivo)) * 100))
+    
+    pdf.cell(50, 10, 'Leads', 1)
+    pdf.cell(35, 10, str(l_actual), 1)
+    pdf.cell(35, 10, str(l_objetivo), 1)
+    pdf.cell(35, 10, f"{l_porcentaje}%", 1)
+    pdf.ln()
+    
+    # Tiempo Transcurrido
+    pdf.cell(50, 10, 'Tiempo Transcurrido', 1)
+    pdf.cell(35, 10, f"{st.session_state.kpi_data['tiempo']['valor']}%", 1)
+    pdf.cell(35, 10, "100%", 1)
+    pdf.cell(35, 10, f"{st.session_state.kpi_data['tiempo']['valor']}%", 1)
+    pdf.ln(15)
+    
+    # Observación
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 10, 'Observación:', 0, 1)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 10, st.session_state.observaciones['estado_actual'])
+    pdf.ln(5)
+    
+    # Sección 2: PROYECCIÓN A CIERRE
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_fill_color(156, 39, 176)  # Color morado
+    pdf.cell(0, 10, 'PROYECCIÓN A CIERRE', 0, 1, 'L', 1)
+    pdf.ln(5)
+    
+    pdf.set_font('Arial', '', 11)
+    # Tabla de Proyecciones
+    pdf.cell(100, 10, 'Métrica', 1)
+    pdf.cell(55, 10, 'Valor Proyectado', 1)
+    pdf.ln()
+    
+    pdf.cell(100, 10, 'Matrículas Proyectadas', 1)
+    pdf.cell(55, 10, str(st.session_state.proyeccion_data['matriculas']), 1)
+    pdf.ln()
+    
+    pdf.cell(100, 10, 'Leads Proyectados', 1)
+    pdf.cell(55, 10, str(st.session_state.proyeccion_data['leads']), 1)
+    pdf.ln(15)
+    
+    # Observación
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 10, 'Observación:', 0, 1)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 10, st.session_state.observaciones['proyeccion'])
+    pdf.ln(5)
+    
+    # Sección 3: DISTRIBUCIÓN DE RESULTADOS POR PROGRAMA
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 12)
+    pdf.set_fill_color(255, 193, 7)  # Color amarillo
+    pdf.cell(0, 10, 'DISTRIBUCIÓN DE RESULTADOS POR PROGRAMA', 0, 1, 'L', 1)
+    pdf.ln(5)
+    
+    pdf.set_font('Arial', '', 11)
+    # Tabla de Programas
+    df_programas = pd.DataFrame(st.session_state.programas_data)
+    df_top = df_programas.sort_values('matriculas', ascending=False).head(10)
+    
+    # Encabezados
+    pdf.cell(65, 10, 'Programa', 1)
+    pdf.cell(30, 10, 'Leads', 1)
+    pdf.cell(30, 10, 'Matrículas', 1)
+    pdf.cell(30, 10, 'Conversión (%)', 1)
+    pdf.ln()
+    
+    # Datos
+    for _, row in df_top.iterrows():
+        pdf.cell(65, 10, str(row['programa']), 1)
+        pdf.cell(30, 10, str(int(row['leads'])), 1)
+        pdf.cell(30, 10, str(int(row['matriculas'])), 1)
+        pdf.cell(30, 10, f"{row['conversion']:.1f}%", 1)
+        pdf.ln()
+    
+    pdf.ln(5)
+    
+    # Observación
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 10, 'Insight Estratégico:', 0, 1)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 10, st.session_state.observaciones['programas'])
+    
+    # Crear PDF como bytes
+    buffer = io.BytesIO()
+    buffer.write(pdf.output(dest='S').encode('latin1'))
+    buffer.seek(0)
+    return buffer
 
 # Título principal
 st.title("Editor de Reportes Estratégicos")
@@ -130,9 +342,28 @@ with col3:
 
 # Opciones de exportación
 st.sidebar.subheader("Exportar Reporte")
-formato_exportacion = st.sidebar.selectbox("Formato", ["PDF", "Excel"])
+formato_exportacion = st.sidebar.selectbox("Formato", ["Excel", "PDF"])
+
 if st.sidebar.button("Exportar Reporte"):
-    st.sidebar.success(f"Reporte exportado en formato {formato_exportacion}")
+    try:
+        if formato_exportacion == "Excel":
+            buffer = generate_excel()
+            # Crear link de descarga
+            b64 = base64.b64encode(buffer.read()).decode()
+            href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="reporte_{st.session_state.titulo_reporte.replace(" ", "_")}_{datetime.now().strftime("%Y%m%d")}.xlsx">Descargar Excel</a>'
+            st.sidebar.markdown(href, unsafe_allow_html=True)
+            st.sidebar.success("Excel generado correctamente")
+        
+        elif formato_exportacion == "PDF":
+            buffer = generate_pdf()
+            # Crear link de descarga
+            b64 = base64.b64encode(buffer.read()).decode()
+            href = f'<a href="data:application/pdf;base64,{b64}" download="reporte_{st.session_state.titulo_reporte.replace(" ", "_")}_{datetime.now().strftime("%Y%m%d")}.pdf">Descargar PDF</a>'
+            st.sidebar.markdown(href, unsafe_allow_html=True)
+            st.sidebar.success("PDF generado correctamente")
+
+    except Exception as e:
+        st.sidebar.error(f"Error al generar el reporte: {str(e)}")
 
 # CONTENIDO PRINCIPAL - Tres pestañas para las secciones
 tab1, tab2, tab3 = st.tabs(["ESTADO ACTUAL", "PROYECCIÓN", "PROGRAMAS"])
@@ -223,72 +454,71 @@ with tab1:
 with tab2:
     st.subheader("PROYECCIÓN A CIERRE")
     
-    # Edición de valores de proyección
-    col1, col2 = st.columns([3, 2])
+    col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Valores de proyección")
-        p_valor = st.number_input("Proyección", min_value=0, value=st.session_state.proyeccion_data['valor'], key="proy_valor")
-        p_min = st.number_input("Mínimo", min_value=0, value=st.session_state.proyeccion_data['min'], key="proy_min")
-        p_max = st.number_input("Máximo", min_value=0, value=st.session_state.proyeccion_data['max'], key="proy_max")
+        st.subheader("Matrículas proyectadas")
+        p_matriculas = st.number_input("Valor esperado", min_value=0, value=st.session_state.proyeccion_data['matriculas'], key="proy_matriculas")
         
         # Actualizar estado
-        if p_valor != st.session_state.proyeccion_data['valor']:
-            st.session_state.proyeccion_data['valor'] = p_valor
-        if p_min != st.session_state.proyeccion_data['min']:
-            st.session_state.proyeccion_data['min'] = p_min
-        if p_max != st.session_state.proyeccion_data['max']:
-            st.session_state.proyeccion_data['max'] = p_max
-            
-        # Visualización simple
-        fig, ax = plt.subplots(figsize=(10, 5))
+        if p_matriculas != st.session_state.proyeccion_data['matriculas']:
+            st.session_state.proyeccion_data['matriculas'] = p_matriculas
         
-        # Rango de valores para representar la curva
-        rango = max(p_max - p_min, 10)  # Asegurar un rango mínimo
-        x = np.linspace(p_min - rango*0.2, p_max + rango*0.2, 100)
+        # Visualizar con barra de progreso
+        objetivo_matriculas = st.session_state.kpi_data['matriculas']['objetivo']
+        pct_cumplimiento = min(100, int((p_matriculas / max(1, objetivo_matriculas)) * 100))
         
-        # Crear una curva de campana simple centrada en el valor proyectado
-        media = p_valor
-        desv_est = (p_max - p_min) / 4  # Una estimación razonable
-        y = np.exp(-0.5 * ((x - media) / desv_est) ** 2) / (desv_est * np.sqrt(2 * np.pi))
+        st.write(f"Matrículas proyectadas vs Objetivo ({pct_cumplimiento}%)")
+        st.progress(pct_cumplimiento/100)
         
-        # Normalizar para mejor visualización
-        y = y / max(y) * 0.8
-        
-        # Gráfico
-        ax.fill_between(x, y, color=st.session_state.colores_tema['proyeccion'] + '40')  # Añadir transparencia
-        ax.plot(x, y, color=st.session_state.colores_tema['proyeccion'], linewidth=2)
-        
-        # Línea para el valor esperado
-        ax.axvline(x=p_valor, color=st.session_state.colores_tema['proyeccion'], linestyle='-', linewidth=2)
-        
-        # Línea para el objetivo
-        objetivo = st.session_state.kpi_data['matriculas']['objetivo']
-        ax.axvline(x=objetivo, color='#4CAF50' if p_valor >= objetivo else '#F44336', 
-                linestyle='--', linewidth=2)
-        
-        # Configuración visual limpia
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-        ax.spines['left'].set_visible(False)
-        ax.set_yticks([])
-        ax.set_xticks([objetivo, p_valor])
-        ax.set_xticklabels([f'Meta: {objetivo}', f'Proyección: {p_valor}'])
-        
-        # Mostrar gráfico
-        st.pyplot(fig)
+        if pct_cumplimiento >= 100:
+            st.success(f"Se espera CUMPLIR el objetivo con {p_matriculas} matrículas")
+        elif pct_cumplimiento >= 90:
+            st.info(f"Se proyecta alcanzar el {pct_cumplimiento}% del objetivo")
+        else:
+            st.warning(f"Se proyecta alcanzar el {pct_cumplimiento}% del objetivo")
     
     with col2:
-        # Valor central destacado
-        st.markdown(f"### Matrículas proyectadas")
-        st.markdown(f"## {p_valor}")
-        st.markdown(f"Intervalo de confianza: {p_min} – {p_max}")
+        st.subheader("Leads proyectados")
+        p_leads = st.number_input("Valor esperado", min_value=0, value=st.session_state.proyeccion_data['leads'], key="proy_leads")
         
-        # Observación (editable)
-        st.subheader("Observación")
-        nueva_observacion = st.text_area("", st.session_state.observaciones['proyeccion'], key="obs_proyeccion")
-        if nueva_observacion != st.session_state.observaciones['proyeccion']:
-            st.session_state.observaciones['proyeccion'] = nueva_observacion
+        # Actualizar estado
+        if p_leads != st.session_state.proyeccion_data['leads']:
+            st.session_state.proyeccion_data['leads'] = p_leads
+        
+        # Visualizar con barra de progreso
+        objetivo_leads = st.session_state.kpi_data['leads']['objetivo']
+        pct_cumplimiento_leads = min(100, int((p_leads / max(1, objetivo_leads)) * 100))
+        
+        st.write(f"Leads proyectados vs Objetivo ({pct_cumplimiento_leads}%)")
+        st.progress(pct_cumplimiento_leads/100)
+        
+        if pct_cumplimiento_leads >= 100:
+            st.success(f"Se espera CUMPLIR el objetivo con {p_leads} leads")
+        elif pct_cumplimiento_leads >= 90:
+            st.info(f"Se proyecta alcanzar el {pct_cumplimiento_leads}% del objetivo")
+        else:
+            st.warning(f"Se proyecta alcanzar el {pct_cumplimiento_leads}% del objetivo")
+    
+    # Tabla de Proyección vs Objetivo
+    st.subheader("Resumen de Proyección")
+    
+    data = {
+        "Métrica": ["Matrículas", "Leads"],
+        "Valor Actual": [st.session_state.kpi_data['matriculas']['actual'], st.session_state.kpi_data['leads']['actual']],
+        "Valor Proyectado": [p_matriculas, p_leads],
+        "Objetivo": [objetivo_matriculas, objetivo_leads],
+        "% Proyectado del Objetivo": [f"{pct_cumplimiento}%", f"{pct_cumplimiento_leads}%"]
+    }
+    
+    df_proyeccion = pd.DataFrame(data)
+    st.table(df_proyeccion)
+    
+    # Observación (editable)
+    st.subheader("Observación")
+    nueva_observacion = st.text_area("", st.session_state.observaciones['proyeccion'], key="obs_proyeccion")
+    if nueva_observacion != st.session_state.observaciones['proyeccion']:
+        st.session_state.observaciones['proyeccion'] = nueva_observacion
 
 # TAB 3: DISTRIBUCIÓN DE RESULTADOS POR PROGRAMA
 with tab3:
@@ -340,22 +570,3 @@ with tab3:
     nueva_observacion = st.text_area("", st.session_state.observaciones['programas'], key="obs_programas")
     if nueva_observacion != st.session_state.observaciones['programas']:
         st.session_state.observaciones['programas'] = nueva_observacion
-
-# Vista previa del reporte
-if st.button("Vista Previa del Reporte"):
-    st.subheader("Vista Previa del Reporte")
-    st.write(f"**Título:** {st.session_state.titulo_reporte}")
-    
-    st.write("### 1. ESTADO ACTUAL / RITMO DE AVANCE")
-    st.write(f"Matrículas: {st.session_state.kpi_data['matriculas']['actual']} / {st.session_state.kpi_data['matriculas']['objetivo']}")
-    st.write(f"Leads: {st.session_state.kpi_data['leads']['actual']} / {st.session_state.kpi_data['leads']['objetivo']}")
-    st.write(f"Tiempo Transcurrido: {st.session_state.kpi_data['tiempo']['valor']}%")
-    st.write(f"Observación: {st.session_state.observaciones['estado_actual']}")
-    
-    st.write("### 2. PROYECCIÓN A CIERRE")
-    st.write(f"Matrículas Proyectadas: {st.session_state.proyeccion_data['valor']} ({st.session_state.proyeccion_data['min']} - {st.session_state.proyeccion_data['max']})")
-    st.write(f"Observación: {st.session_state.observaciones['proyeccion']}")
-    
-    st.write("### 3. DISTRIBUCIÓN DE RESULTADOS POR PROGRAMA")
-    st.dataframe(pd.DataFrame(st.session_state.programas_data))
-    st.write(f"Insight: {st.session_state.observaciones['programas']}")
