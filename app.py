@@ -12,8 +12,9 @@ from utils.report_generator import generate_excel, generate_pdf, generate_pptx
 # Configuración de la página
 st.set_page_config(
     page_title="Dashboard Educativo",
-    page_icon="📊",
-    layout="wide"
+    page_icon="��",
+    layout="wide",
+    initial_sidebar_state="expanded"  # Asegurar que la sidebar esté expandida inicialmente
 )
 
 # Estilos CSS personalizados para un diseño limpio
@@ -246,8 +247,64 @@ st.markdown("""
         padding-left: 1rem !important;
         padding-right: 1rem !important;
     }
+    
+    /* Asegurar que la sidebar sea visible */
+    .css-1d391kg, .css-1lcbmhc {
+        visibility: visible !important;
+        opacity: 1 !important;
+        display: block !important;
+    }
+    
+    /* Botón para mostrar panel de configuración */
+    .show-sidebar-button {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background-color: #2196F3;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 5px;
+        z-index: 1000;
+        cursor: pointer;
+        font-weight: bold;
+    }
 </style>
+
+<script>
+// Script para controlar el botón de mostrar/ocultar sidebar
+document.addEventListener('DOMContentLoaded', function() {
+    // Crear botón si no existe
+    if (!document.querySelector('.show-sidebar-button')) {
+        const button = document.createElement('button');
+        button.className = 'show-sidebar-button';
+        button.innerHTML = 'Mostrar Configuración';
+        button.onclick = function() {
+            // Buscar el elemento de la sidebar por sus clases comunes
+            const sidebar = document.querySelector('.css-1d391kg, .css-1lcbmhc');
+            if (sidebar) {
+                if (sidebar.style.display === 'none') {
+                    sidebar.style.display = 'block';
+                    this.innerHTML = 'Ocultar Configuración';
+                } else {
+                    sidebar.style.display = 'none';
+                    this.innerHTML = 'Mostrar Configuración';
+                }
+            }
+        };
+        document.body.appendChild(button);
+    }
+});
+</script>
 """, unsafe_allow_html=True)
+
+# Botón adicional para mostrar la sidebar (para dispositivos móviles o si está oculta)
+if st.button("📋 Mostrar/Ocultar Panel de Configuración"):
+    st.session_state['show_sidebar'] = not st.session_state.get('show_sidebar', True)
+    if st.session_state['show_sidebar']:
+        st.sidebar.markdown("### Panel de Configuración Visible")
+    else:
+        st.sidebar.markdown("### Panel de Configuración Oculto")
+    st.experimental_rerun()
 
 # Funciones para componentes UI
 def create_slide_header(title, color):
